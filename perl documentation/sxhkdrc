@@ -1,0 +1,23 @@
+
+
+
+super + grave
+	selection="$( man -k . | grep -e "^perl" | cut -d " " -f1,2 | dmenu -i -l 30 | tr -d " )" | tr "(" "." )"; [[ "$?" -ne 0 ]] || st -T "$selection - perldoc" -e man $selection 
+
+
+super + 1
+    man -k . | dmenu -i -l 30 | perl -lane '($man,$section)=@F[0,1]; if($man =~ /^(.*)\.\.\.$/) \{ $cap=$1; $man=(grep \{/\Q$cap\E/i\} map \{ qx\{ find $_ \} \} split ":", qx\{ manpath \} =~ s/\s+$//r)[0] =~ s/\s+$//r; print $man \} else \{ print join("", $man, $section) =~ tr/)//dr =~ tr/(/./r \}' | while read line ; do st -T "$line - man" -e man "$line" && echo "man $line" >> ~/.bash_history ; done
+
+
+super + 2
+	/home/london/.my_configurations/scripts/perl/documentation/dmenu_2_manuals2.pl
+
+
+ctrl + 7
+	/home/london/.my_configurations/scripts/documentation/perlvar.sh	
+
+
+ctrl + 8
+	/home/london/.my_configurations/scripts/documentation/perlfunc_by_category2.sh
+
+
