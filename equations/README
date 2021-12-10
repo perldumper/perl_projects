@@ -10,4 +10,13 @@ I started refactoring the code in OOP in the folder equations/module/equations_m
 
 But the real projects is in equations/module/
 and the main script is still equations.pl
+------------------------------------------------
+
+the photos isolate.pl.png equations.pl.png
+shows what the scripts do.
+
+It was originally a before/after picture showing the latest feature at the time which was
+transforming the AST form (or maybe the postfix form) of the equation in infix
+in such a way that only required parenthesess from the operator precedence perspective were shown.
+
 
