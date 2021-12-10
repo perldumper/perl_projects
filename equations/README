@@ -1,0 +1,13 @@
+
+Like some of my other projects, my current version doesn't completely work anymore because of the last modifications.
+But you can find some old version somewhere that somehow works.
+
+isolate.pl was he first big part of the project
+
+the main script is equations.pl
+
+I started refactoring the code in OOP in the folder equations/module/equations_module_NEW/.
+
+But the real projects is in equations/module/
+and the main script is still equations.pl
+
