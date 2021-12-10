@@ -1,0 +1,22 @@
+
+
+BASHRC
+
+
+export PERL5LIB=/home/london/.my_configurations/perl_modules
+
+
+function perl ()
+{
+    if [ -t 0 -a $# -eq 0 ]; then
+        /usr/bin/perl -My -d -e '';
+    else
+        /usr/bin/perl -My -e 'no feature "bitwise"; no warnings "experimental::smartmatch";' "$@";
+    fi
+}
+
+# meaning that -My is implied and this affect some one liners
+
+
+
+
