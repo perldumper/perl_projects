@@ -1,0 +1,23 @@
+
+#############################################################
+# BUGS
+
+# new function find_node_path bug
+
+
+# london@archlinux:~/perl/scripts/equations/module
+# $ ./equations.pl 'y=2^3^x,x,y=2'
+# y = 2^3^x
+# x = ln(ln(y)/ln(2))/ln(3)
+# x = ln(ln(2)/ln(2))/ln(3)
+# x = 0
+
+# london@archlinux:~/perl/scripts/equations/module
+# $ ./equations.pl 'y=2^3^x,x,y=2'
+# reversing the power operator ^ to get the value of the right side shoudln't happen
+
+# london@archlinux:~/perl/scripts/equations/module
+# $ ./equations.pl 'y=3^x,x,y=1'
+# reversing the power operator ^ to get the value of the right side shoudln't happen
+
+

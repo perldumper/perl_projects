@@ -1,0 +1,20 @@
+
+$equation = {
+    trees => {
+        left_side => {
+        },
+        right_side => {
+        },
+    },
+};
+
+$operation = {
+    type => binary_op / unary_op,
+    value => + / - / * / "/" / ^ / **,
+    id # used for ???
+    side # only for for isolate, in the array of nodes / path
+}
+
+
+
+

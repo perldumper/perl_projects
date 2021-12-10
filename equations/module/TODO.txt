@@ -1,0 +1,31 @@
+
+- put (bio)chemistry / physics examples (assignments for university courses) where the little system of equation that can be solve using only variable isolation and substitution of one equation into another.
+
+MATHS FEATURES
+- make a recursive descent parser instead of the shunting-yard algorithm
+- translate the tree functions (finding_things.pm, ) from the currrent imperative form to a cleaner recursive form
+- finish and fix the derivation function
+- make a mini language in which write equation patterns as a string, to avoid having to declare each new pattern as a tree / hash of hash of hash ... . Make it so that the tree match function can use it and modify the equation with
+- make an history of the transformation of the initial equation / system to facilitate debugging or if we want to keep the way we find the solution. would be compse of the initial equation/system + the operations applied sequentially and the resulting equation/system of each operation
+
+CODE CLEANUP
+- fix previously? cyclic dependency problem
+- modules loaded multiple times ?? see %INC
+- make it object oriented ? or at least a proper module with a clear interface
+- make a function to use graphviz to visualize what is happening
+- use Carp
+
+
+TESTING
+- make for tests. make tests for individual functions, starting with the pretty printing functions
+
+INTERFACE / API
+- make equation / make system (of equations) ==> parsing
+- functions to manipulate equations
+--> isolate a variable, substitute an equation into another
+- pretty print function (inorder tree traversal, but remove unnecessary parentheses)
+
+
+
+
+

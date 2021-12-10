@@ -1,0 +1,162 @@
+
+
+
+digraph {
+
+
+subgraph cluster_1 {
+
+label="main variables"
+
+precedence;
+left_associative;
+right_associative;
+inverse;
+}
+
+subgraph cluster_2 {
+label="equation_operations"
+
+isolate;
+
+isolate -> find_node_path;
+isolate -> tree_substitute;
+isolate -> tree_walk;
+isolate -> mark_nodes;
+isolate -> put_variable_on_the_left;
+
+
+substitute;
+
+
+recursive_solve -> find_equations_containing_var;
+recursive_solve -> remove_equation;
+recursive_solve -> copy_data_structure;
+recursive_solve -> isolate;
+recursive_solve -> set_inclusion;
+recursive_solve -> set_difference;
+recursive_solve -> recursive_solve;
+recursive_solve -> substitute;
+
+put_variable_on_the_left;
+
+}
+subgraph cluster_3 {
+
+label="equation_output";
+
+postfix_to_infix;
+reverse_polish_calculator;
+tree_to_infix;
+tree_to_postfix;
+
+print_equation;
+print_equation -> postfix_to_infix;
+print_equation -> tree_to_postfix;
+
+stringify;
+stringify -> postfix_to_infix;
+stringify -> tree_to_postfix;
+
+
+print_equation_info;
+
+}
+
+subgraph cluster_4 {
+
+label="finding_things";
+
+
+find_node_path;
+find_node_path -> put_variable_on_the_left;
+
+find_nodes;
+find_variables;
+find_equations_containing_var;
+tree_starts_with;
+
+tree_match;
+tree_match -> tree_starts_with;
+
+tree_substitute;
+tree_substitute -> tree_match;
+tree_substitute -> copy_data_structure;
+tree_substitute -> tree_walk;
+tree_substitute -> add_subtrees;
+
+tree_walk;
+
+tree_clear_walkmarks;
+tree_clear_walkmarks -> tree_walk;
+
+mark_nodes;
+mark_nodes -> tree_walk;
+
+}
+
+subgraph cluster_5 {
+
+label="graph";
+
+make_graph;
+
+make_overall_graph;
+make_overall_graph -> copy_data_structure;
+
+copy_data_structure;
+
+}
+
+subgraph cluster_6 {
+
+label="graphviz";
+
+make_graphviz_tree;
+make_graphviz_graph;
+print_graphviz_notemp;
+print_graphviz;
+print_graphviz_tmpfs;
+
+}
+
+subgraph cluster_7 {
+
+label="make_equation";
+
+
+tokenize;
+simplify_signs;
+infix_to_postfix;
+postfix_to_tree;
+make_equation;
+
+make_equation -> tokenize;
+make_equation -> simplify_signs;
+make_equation -> infix_to_postfix;
+make_equation -> postfix_to_tree;
+
+}
+
+
+subgraph cluster_8 {
+
+label="set_operations";
+
+set_intersection;
+set_difference;
+set_union;
+set_equality;
+set_inclusion;
+
+set_inclusion -> set_equality;
+set_inclusion -> set_intersection;
+
+set_belonging;
+set_product;
+
+
+}
+
+}
+
