@@ -1,0 +1,68 @@
+
+these versions of the script seem to be stable
+
+json/time_comparison/json_greppath_dfa_after.pl
+json/time_comparison/json_greppath_dfa_before.pl
+
+---------------------------
+
+there is 2 implementation
+- "imperative"      the first one
+- "dfa"             the second one
+-------------------------------------------------------
+LOGIC
+
+=> "imperative"
+basically like a tree walk using a stack
+push tokens on the stack until arriving at a leaf (= true/false/null/number/string )
+at which point pop the stack
+
+=> "dfa"
+finite state machine + stack
+
+the stack is required because of the recursive nature of json. it tracks the nesting of arrays and objects
+
+
+-----------------------------------------------------------------------------------------------
+this one liner does almost the same :
+
+jq -r 'paths(.==null or scalars) as $path | getpath($path) as $v | $path | (. | map(if type == "number" then "[\(tostring)]" else "."+. end) | join("") ) + " --> " + ($v | if type=="string" then "\"\(.)\"" else . end | tostring)' avril.json
+
+
+-------------------------------------------------------
+
+There have been a lot of trys to get it working, particularly for the first one.
+At some point I got it working pretty well. But then I decided to add stuffs and now the "current" branch/file isn't functional anymore.
+
+I think there maybe some old "svg" (saved) version working somewhere.
+
+The first version used 2 scripts :
+./json_tokenizer.pl FILE | ./json_greppath.pl
+
+which were then merged.
+
+will be fixed at some point
+
+old version didn't output a line for empty arrays or empty objects
+
+----------------------------------------------------
+TO DO
+
+get it working again
+
+fix the cli arguments parsing / logic
+
+split it into several parts : argument parsing, tokenizing, tree walking, pretty printing, error detection
+
+
+finish the Data::Dumper version
+
+use filehandles rather than using lists/arrays which doesn't scale for big files
+(like when using the Data::Dumper version on the parse tree of a big html file)
+
+
+
+
+
+
+
