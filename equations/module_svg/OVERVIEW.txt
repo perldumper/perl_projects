@@ -1,0 +1,36 @@
+
+for now, this script does this :
+
+- "parse" the input as a list of equations and variable assignments
+- for each equation, split it onto the '=' sign, parse each expression using the shunting-yard algorithm. The 2 parse trees are then put into a hash.
+
+
+isolate function :
+- search the variable to isolate, and record the root-to-leaf path to attain it
+- from the root-to-leaf path, applies the correct sequence of operations to isolate the variable on one side of the equation
+
+here's an example
+
+c*(d-e)/((f-g)-a*b)=(z-x)*(y+u) => we want to isolate e, so we :
+
+1) multiply each side by ((f-g)-a*b)
+c*(d-e) = (z-x)*(y+u)*((f-g)-a*b)
+
+2) divide each side by c
+(d-e) = (z-x)*(y+u)*((f-g)-a*b)/c
+
+3) negate both side by (z-x)*(y+u)*((f-g)-a*b)/c and put e on the other side of =
+d-(z-x)*(y+u)*((f-g)-a*b)/c = e
+
+4) change side optionally
+e = d-(z-x)*(y+u)*((f-g)-a*b)/c
+
+
+recursive_solve function :
+
+
+
+
+
+
+

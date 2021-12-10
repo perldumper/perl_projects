@@ -1,0 +1,194 @@
+
+
+Tie::RefHash ??
+
+Tie::Hash custom ?
+
+TIEHASH make_equation, mark_nodes, etc..
+tie %equation, "CLASS", $equation_string;
+
+FETCH isolate and return the other side
+$other_side = $equation{"a"} --> isolate a
+
+
+STORE substitute
+$equation1{"a"} = $equation2{"a"}  --> substitute in "a" in the %equation1 by what
+	same as
+$other_side = $equation2{"a"}
+$equation1{"a"} = $other_side
+
+
+
+sub recursive_solve {
+	my ($wanted_var, @bag_of_equations) = @_;
+	my @reduced_bag_of_equations;
+	my $expanded_equation;
+	my $temp_expanded_equation;
+	my $solution;			# keep final expression, with all unknown variables substitued. varialbes not replaced by numbers
+	my $temp_solution;
+	my @in_function_of_vars;
+	my @known_variables;
+	my $var;
+	my $variable_value;
+	my $eq;
+
+	unless (@bag_of_equations) {return 0}
+
+	sub remove_equation {
+		my ($equation, @equation_set) = @_;
+		for (my $i = 0; $i < @equation_set; $i++) {
+			if ($equation_set[$i]->{string} eq $equation->{string}) {
+				splice @equation_set, $i, 1;
+
+			}
+		}
+		return @equation_set;
+	}
+
+	EQUATION:
+	foreach my $eq (find_equations_containing_var($wanted_var, @bag_of_equations)) {
+		@reduced_bag_of_equations = remove_equation($eq, @bag_of_equations);
+		# what if variable appears multiple times ??
+
+# 		isolate(variable=> 1, which=> $wanted_var, equation=> $eq);
+# 		$expanded_equation = $eq;
+# 		$solution = copy_data_structure($eq);
+
+		$expanded_equation = copy_data_structure($eq);
+		isolate(variable=> 1, which=> $wanted_var, equation=> $expanded_equation);
+		$solution = copy_data_structure($expanded_equation);
+
+		# what if variable appears multiple times ??
+		@in_function_of_vars = set_difference([$eq->{variables}->@*], [$wanted_var]);
+
+		if (set_inclusion(\@in_function_of_vars, \@var_knowns )) {
+			foreach $var (@in_function_of_vars) {
+				$variable_value = {trees=>
+                                  {left_side=> {type=> "variable", value=> $var },
+								  right_side=> {type=> "number",   value=> $var_knowns_values{$var} } }};
+				substitute($variable_value, $expanded_equation);
+			}
+			return ($expanded_equation, $solution);			# recursive substitution successful
+		}
+		else {
+			# what if variable appears multiple times ??
+			@known_variables = set_difference(\$eq->{variables}->@*, \$eq->{unknowns}->@*);
+			@known_variables = set_difference(\@known_variables, [$wanted_var]);			# just in case
+			foreach $var (@known_variables) {
+				$variable_value = {trees=>
+                                  {left_side=> {type=> "variable", value=> $var },
+								  right_side=> {type=> "number",   value=> $var_knowns_values{$var} } }};
+				substitute($variable_value, $expanded_equation);
+			}
+
+
+			foreach $var (set_difference([$eq->{unknowns}->@*], [$wanted_var])) {
+	
+				($temp_expanded_equation, $temp_solution) = recursive_solve($var, @reduced_bag_of_equations);
+				if ($temp_expanded_equation == 0) {next EQUATION}
+				substitute($temp_expanded_equation,  $expanded_equation);
+				substitute($temp_solution,  $solution);
+			}
+			return ($expanded_equation, $solution);			# recursive substitution successful
+		}
+	}
+	return 0;							# recursive substitution unsuccessful, every starting points tried
+}
+
+
+###############################################################################################
+
+sub recursive_solve {
+	my ($wanted_var, @bag_of_equations) = @_;
+	my @reduced_bag_of_equations;
+	my $expanded_equation;
+	my $temp_expanded_equation;
+	my $solution;			# keep final expression, with all unknown variables substitued. varialbes not replaced by numbers
+	my $temp_solution;
+	my @in_function_of_vars;
+	my @known_variables;
+	my $var;
+	my $variable_value;
+	my $eq;
+
+	unless (@bag_of_equations) {return 0}
+
+	sub remove_equation {
+		my ($equation, @equation_set) = @_;
+		for (my $i = 0; $i < @equation_set; $i++) {
+			if ($equation_set[$i]->{string} eq $equation->{string}) {
+				splice @equation_set, $i, 1;
+
+			}
+		}
+		return @equation_set;
+	}
+
+	EQUATION:
+	foreach my $eq (find_equations_containing_var($wanted_var, @bag_of_equations)) {
+		@reduced_bag_of_equations = remove_equation($eq, @bag_of_equations);
+		# what if variable appears multiple times ??
+
+# 		isolate(variable=> 1, which=> $wanted_var, equation=> $eq);
+# 		$expanded_equation = $eq;
+# 		$solution = copy_data_structure($eq);
+
+		$expanded_equation = copy_data_structure($eq);
+		isolate(variable=> 1, which=> $wanted_var, equation=> $expanded_equation);
+		$solution = copy_data_structure($expanded_equation);
+
+		# what if variable appears multiple times ??
+		@in_function_of_vars = set_difference([$eq->{variables}->@*], [$wanted_var]);
+
+		if (set_inclusion(\@in_function_of_vars, \@var_knowns )) {
+			foreach $var (@in_function_of_vars) {
+				$variable_value = {trees=>
+                                  {left_side=> {type=> "variable", value=> $var },
+								  right_side=> {type=> "number",   value=> $var_knowns_values{$var} } }};
+				substitute($variable_value, $expanded_equation);
+			}
+			return ($expanded_equation, $solution);			# recursive substitution successful
+		}
+		else {
+			# what if variable appears multiple times ??
+			@known_variables = set_difference(\$eq->{variables}->@*, \$eq->{unknowns}->@*);
+			@known_variables = set_difference(\@known_variables, [$wanted_var]);			# just in case
+			foreach $var (@known_variables) {
+				$variable_value = {trees=>
+                                  {left_side=> {type=> "variable", value=> $var },
+								  right_side=> {type=> "number",   value=> $var_knowns_values{$var} } }};
+				substitute($variable_value, $expanded_equation);
+			}
+
+
+			foreach $var (set_difference([$eq->{unknowns}->@*], [$wanted_var])) {
+	
+				($temp_expanded_equation, $temp_solution) = recursive_solve($var, @reduced_bag_of_equations);
+				if ($temp_expanded_equation == 0) {next EQUATION}
+				substitute($temp_expanded_equation,  $expanded_equation);
+				substitute($temp_solution,  $solution);
+			}
+			return ($expanded_equation, $solution);			# recursive substitution successful
+		}
+	}
+	return 0;							# recursive substitution unsuccessful, every starting points tried
+}
+
+
+
+
+infix --> postfix --> tree
+
+tree --> postfix --> infix ????
+
+
+REVERSE ALGORITHM OF POSTFIX TO TREE ??
+
+
+
+
+####################################################################################################
+
+
+
+
