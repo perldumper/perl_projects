@@ -1,0 +1,65 @@
+
+
+change User-Agent HTTP header field to avoid the default libwww-perl/6.53 and get recognize as a bot
+
+
+
+# HEAD HTTP request for viewing file size
+perl -MLWP::UserAgent -E '$url=shift; $ua = LWP::UserAgent->new; $ua->show_progress(1); $ua->agent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.114 Safari/537.36"); $response=$ua->head($url); say $response->{_headers}{"content-length"}' https://download.virtualbox.org/virtualbox/6.1.26/virtualbox-6.1_6.1.26-145957~Debian~buster_amd64.deb
+
+
+-----------------------------------------
+# GET request / download a file
+
+perl -MLWP::UserAgent -le '$url=shift; $file="file_path.mp4"; $ua=LWP::UserAgent->new; $ua->agent("Mozilla/8.0"); $ua->show_progress(1); $res=$ua->get($url, ":content_file"=> $file); print "download ", $res->is_success ? "success" : "error"' https://....org/.../file.mp4
+
+
+-----------------------------------------
+
+# UNESCAPE URI and related
+
+perl -MURI::Escape -le '$url="https://duckduckgo.com/?q=cpan+url+escape&ia=software&iai=3&page=1&sexp=%7B%22cdrexp%22%3A%22b%22%2C%22biaexp%22%3A%22b%22%2C%22msvrtexp%22%3A%22b%22%7D"; print uri_unescape($url)'
+
+
+
+alias html_decode='perl -COA -MHTML::Entities -le '\''print decode_entities($_) for @ARGV'\'' '
+alias html_encode='perl -COA -MHTML::Entities -le '\''print encode_entities($_) for @ARGV'\'' '
+alias uri_unescape='perl -COA -MURI::Escape -le '\''print uri_unescape($_) for @ARGV'\'' '
+alias uri_escape='perl -COA -MURI::Escape -le '\''print uri_escape($_) for @ARGV'\'' '
+alias uri_decode='node -e '\''process.argv.slice(1).forEach( e => l(decodeURI(e)))'\'' '
+alias uri_encode='node -e '\''process.argv.slice(1).forEach( e => l(encodeURI(e)))'\'' '
+
+
+----------------------------------------------------------------------
+# XPATH
+perl -Mdd -MHTML::TreeBuilder::XPath -E ' do { ($url, $title)=($_->{href}, $_->{title} // $_->{_content}[0]); say "$url\t$title"  } for HTML::TreeBuilder::XPath->new->parse_file(shift)->findnodes("/html/body/form/div/div/div/div/div/div/a")' tread.html 
+
+
+perl -MLWP::UserAgent -le '$ua=LWP::UserAgent->new(agent => "Mozilla/5.0"); $req=HTTP::Request->new("GET", "http://useragentstring.com/"); print $ua->request($req)->{_content}' | perl -MHTML::TreeBuilder::XPath -E 'local $/; say $_->{_content}[0] for HTML::TreeBuilder::XPath->new->parse(<>)->findnodes("/html/body/div/div/form/div/textarea")'
+
+
+perl -MHTML::TreeBuilder::XPath -E ' say $_->{_content}[0] for HTML::TreeBuilder::XPath->new->parse_file(shift)->findnodes("/html/body/div/div/form/div/textarea")' useragentsrting.html 
+
+
+perl -MDDP -MHTML::TreeBuilder::XPath -E '$tree = HTML::TreeBuilder::XPath->new; $tree->parse_file(shift); for ($tree->findnodes("//meta")) { p $_ }' xfce.html 
+
+
+----------------------------------------------------------------------
+# CSS Selector converted to XPATH
+# and using DDP / Data::Printer
+
+
+perl -MDDP -MHTML::TreeBuilder::XPath -MHTML::Selector::XPath=selector_to_xpath -E '$tree = HTML::TreeBuilder::XPath->new; $tree->parse_file(shift); for ($tree->findnodes(selector_to_xpath("meta"))) { p $_ }' xfce.html 
+
+
+# same with some information disabled
+
+perl -MHTML::TreeBuilder::XPath -MHTML::Selector::XPath=selector_to_xpath -E 'use Data::Printer {class => {show_methods => "none"}}; $tree = HTML::TreeBuilder::XPath->new; $tree->parse_file(shift); for ($tree->findnodes(selector_to_xpath("meta"))) { p $_ }' xfce.html 
+
+
+perl -MHTML::TreeBuilder::XPath -MHTML::Selector::XPath=selector_to_xpath -E 'use DDP {class => {show_methods => "none"}}; $tree = HTML::TreeBuilder::XPath->new; $tree->parse_file(shift); for ($tree->findnodes(selector_to_xpath("meta"))) { p $_ }' xfce.html 
+
+
+
+
+
