@@ -1,0 +1,24 @@
+( 5 * 4 + 3 * 2 ) - 1
+     STACK     QUEUE         TOKENS
+                             (5*4+3*2)-1         pop OPEN PAREN from stack, unshift it on tokens
+     (                       5*4+3*2)-1          pop number from queue, unshift it on tokens
+     (         5             *4+3*2)-1           pop operator from stack, unshift it on tokens
+     (*        5             4+3*2)-1            pop number from queue, unshift it on tokens
+     (*        54            +3*2)-1             pop operator from stack, unshift it on tokens
+     (         54*           3*2)-1              
+     (+        54*           3*2)-1              pop number from queue, unshift it on tokens
+     (+        54*3          *2)-1               pop operator from stack, unshift it on tokens
+     (+*       54*3          2)-1                pop number from queue, unshift it on tokens
+     (+*       54*32         )-1                 pop operator from queue, push it on stack, unshift CLOSING PAREN on tokens
+     (+        54*32*        -1                  pop operator from queue, push it on stack
+     (         54*32*+       -1                  push OPEN PAREN on stack
+               54*32*+       -1                  pop operator from stack, unshift it on tokens
+     -         54*32*+       1                   pop number from queue, unshift it on tokens
+     -         54*32*+1                          pop operator from queue, push it on stack
+               54*32*+1-                         
+========================================
+5 4 * 3 2 * + 1 -
+
+5 4 * 3 2 ( * + ) 1 -
+
+
