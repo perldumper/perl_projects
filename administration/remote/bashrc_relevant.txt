@@ -1,0 +1,55 @@
+
+ 
+# WRONG BEHAVIOR
+function _push_history() {
+	history -a
+# 	for	i in "$@" ; do
+# 		echo "$i" >> ~/.bash_history
+# 	done
+
+	cat ~/.bash_history | perl -le 'my %seen; print reverse grep { !$seen{$_}++ } reverse <STDIN>, join("\n", @ARGV)' "$@" | sponge ~/.bash_history
+
+	history -r
+}
+
+
+
+
+function _mpv_terminal_remote() {
+	nextfile="$(history | /home/london/.my_configurations/scripts/perl/terminal_remote.pl "$@" )"
+
+	if [ -z "$nextfile" ] ; then return ; fi
+
+# 	(\mpv --fs --player-operation-mode=pseudo-gui &> /dev/null "$(realpath "$succ")" &)
+	(/usr/bin/mpv --fs --player-operation-mode=pseudo-gui &> /dev/null "$(realpath "$nextfile")" &)
+	echo $nextfile
+	_push_history "mpv \"$nextfile\"" "$1"
+}
+
+
+
+
+alias first='_mpv_terminal_remote "first"'
+alias pred='_mpv_terminal_remote "pred"'		# predecessor, like in Perl 6
+alias curr='_mpv_terminal_remote "curr"'
+alias succ='_mpv_terminal_remote "succ"'		# successor, like in Perl 6
+alias last='_mpv_terminal_remote "last"'		# conflict with /usr/bin/last
+alias next='succ'
+alias prec='pred'
+
+# make a last function to use xdg-open ??   last in Pictures/maim/ --> open last picture in sxiv
+
+function start() {
+# 	video="$(filter video | dmenu -i -l 30)"
+	video="$(filter video sort | dmenu -i -l 30)"
+	[[ $? -ne 0 ]] && return
+# 	(\mpv --fs --player-operation-mode=pseudo-gui &> /dev/null "$(realpath "$video")" &)
+	(/usr/bin/mpv --fs --player-operation-mode=pseudo-gui &> /dev/null "$(realpath "$video")" &)
+	echo $video
+	echo "$video"          > ./.current
+	_push_history "mpv \"$video\"" "start"
+}
+
+
+
+
