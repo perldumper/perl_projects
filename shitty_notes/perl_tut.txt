@@ -1,0 +1,3959 @@
+
+
+why perl was a big improvement
+over C, shell, grep, sed, awk
+
+- regex first citizen
+- function takes lists, and returns list
+(while C doesn't take a variable number of arguments for its functions (with not using VA_ARG macro), and functions only return one value)
+- shell only knows strings
+- function can take functions as arguments and return functions (code references)
+- hashes
+- nested arrays and hashes, closure property
+- iteration foreach loop
+- autovivification
+
+
+
+#####################
+#   GETING STARTED  #
+#####################
+
+QUICK UNIX TOOLS REPLACEMENTS
+(if there is not a file as argument, the commands below are assumed to read something from stdin)
+
+cat              file1 file2 file3
+perl -pe ''      file1 file2 file3
+perl -ne 'print' file1 file2 file3
+
+grep 'pattern'
+perl -ne 'print if /pattern/'
+
+grep 'pattern'                         file
+perl -ne 'print if /pattern/'          file
+perl -e  'print grep /pattern/,  <>'   file
+perl -e  'print grep {/pattern/} <>'   file
+
+grep -v 'pattern'
+perl -ne 'print if !/pattern/'
+
+sed      's///g'
+perl -pe 's///g'
+
+awk '{print $1}'
+perl -lane 'print $F[0]'
+perl -le '$,="\n"; print map {(split)[0]} <>'
+
+awk '{print $1, $3}'
+perl -lane 'print @F[0,2]'
+perl -le '$,="\n"; print map {join " ",(split)[0,2]} <>'
+
+awk '{print $NF}'
+perl -lane 'print $F[$#F]'
+
+awk '$2 ~ /^a/'
+perl -ane 'print if $F[1] =~ /^a/'
+perl -e   'print grep {(split)[1] =~ /^a/} <>'
+perl -e   'print grep {(split /\s+/)[1] =~ /^a/} <>'
+perl -e   'print grep {(split /\s+/, $_)[1] =~ /^a/} <>'
+
+awk    '/pat1/,/pat2/'               file
+sed -n '/pat1/,/pat2/p'              file
+perl -ne 'print if /pat1/ .. /pat2/' file
+
+cut -d: -f1
+awk -F: '{print $1}'
+perl -F: -lne 'print $F[0]'
+perl -lne '@F=split /:/, $_; print $F[0]'
+perl -lne '@F=split /:/;     print $F[0]'
+
+
+awk 'NF==3'
+perl -lane 'print if @F==3'
+
+wc -l
+perl -lne 'END {print $.}'
+perl -lne '}{print $.'   # literally this : perl -le 'while(<>){}{print $.}'
+perl -nE '}{say $.'
+---------------------------------------------------------------------------
+SED-LIKE PROCESSING
+
+s/// (implicit $_)
+
+equivalents :
+$_ =~ s///
+s///
+
+for   (@array) {s/line/LINE/}
+while (<>)     {s/line/LINE/} 
+s/line/LINE/ for @array
+s/line/LINE/ while <>
+
+var=$(echo $var | sed 's///')
+$var =~ s///
+
+var=$(echo $var | sed 'y///')
+$var =~ y///
+$var =~ tr///
+
+string=$(echo $var | sed 'y///')
+$string = $var =~ s///r
+
+###############################
+#     COMMAND LINE BASICS     #
+###############################
+
+-e -n -p -l -a -F -s -E -i -0 -00 -000 -0777
+
+@ARGV  <>  <STDIN>  <ARGV>  @F  $_
+----------------------------
+
+perl -e 'print @ARGV' one two three  # one two three
+
+perl -e  'print <>'             file1 file2
+perl -e  'while(<>){print}'     file1 file2
+perl -e  'print <ARGV>'         file1 file2
+perl -e  'while(<ARGV>){print}' file1 file2
+perl -ne 'print'                file1 file2
+perl -pe ''                     file1 file2
+
+cat file | perl -e  'print <>'
+cat file | perl -e  'while(<>){print}'
+cat file | perl -e  'print <STDIN>'
+cat file | perl -e  'while(<STDIN>){print}'
+cat file | perl -ne 'print'
+cat file | perl -pe ''
+
+-------------------------------------------------------------------
+when there is both a stdin and files passed as arguments,
+<> do the same thing as <ARGV>, and stdin is discarded
+
+cat file1 | perl -e 'print <>' file2  # only file2 is printed
+
+the same is true for the -n and -p switches
+
+cat file1 | perl -ne 'print' file2  # only file2 is printed
+cat file1 | perl -pe ''      file2  # only file2 is printed
+-------------------------------------------------------------------
+
+-n   causes Perl to assume the following loop around your program, which
+     makes it iterate over filename arguments somewhat like sed -n or awk:
+
+       LINE:
+         while (<>) {
+             ...             # your program goes here
+         }
+
+
+-p   causes Perl to assume the following loop around your program, which
+     makes it iterate over filename arguments somewhat like sed:
+
+       LINE:
+         while (<>) {
+             ...             # your program goes here
+         } continue {
+             print or die "-p destination: $!\n";
+         }
+
+
+"BEGIN" and "END" blocks may be used to capture control before or after
+the implicit program loop, just as in awk.
+
+perl -ne 'BEGIN{print "begin\n"} print END {print "end\n"}' file
+
+print STDERR "something\n";
+
+
+
+######################
+#    BASIC SYNTAX    #
+######################
+
+STATEMENTS need to be terminated by a semicolon unless :
+-the statement is the last statement of the program
+-the statement is the last statement of a BLOCK
+
+BLOCK
+sequence of statements delimited by matching curly brackets
+
+there is no need to put a semicolon after the closing bracket of a block except for: 
+do BLOCK, eval BLOCK, (sub BLOCK)
+(because these are not compound statements but simple statements)
+
+WHITESPACES are optionals, even between two of : keywords, operators, expressions, identifiers (variable name, function name)
+
+in Perl, functions are also called subroutines and operators (list opeerators and unary operators)
+
+####################
+#    VARIABLES     #
+####################
+
+3 VARIABLE TYPES
+
+the names of variables are always prefixed by a sigil:
+$scalar    $ --> S as in scalar
+@array     @ --> a as in array
+%hash      % --> key/value (pair)
+
+(more on sigil rules below)
+
+specific values of an array are accessed with the square brackets [] subscript
+specific values of a hash are accessed with the curly brackets {} subscript
+
+-----------------------------------------------------------
+ASSIGNMENT TO A SCALAR
+the type of value a scalar can take: 
+boolean, integer, float, string, (reference)
+
+==LITERAL
+$scalar = 5;
+$scalar = 'string';
+$scalar = "string";
+$scalar = ""   # empty string
+$scalar = 1;   # boolean true  / integer one
+$scalar = 0;   # boolean false / integer zero
+$scalar = undef;
+${scalar}
+
+==SCALAR VARIABLE
+
+$scalar = $variable
+
+==ARRAY ELEMENT
+
+$scalar = $array[0]   # 1st element of an array
+$scalar = $array[1]   # 2nd element
+$scalar = $array[2]   # 3rd element
+$scalar = $array[-2]  # 2nd element of an array, starting from the end
+$scalar = $array[-1]  # last element
+
+==HASH ELEMENT
+
+$scalar = $hash{key}
+$scalar = $hash{$key}  # same thing but the key is stored in a scalar variable
+
+==LIST ELEMENT
+
+$scalar = (LIST)[2] # LIST -> anything that returns a list in list context
+
+$elem = (@array)[2]
+
+$line = (<>)[2]
+$line = (<STDIN>)[2]
+$line = (<ARGV>)[2]
+
+$scalar = (split /\s+/, $var)[2]
+
+
+-----------------------------------------------------------
+ASSIGNMENT TO AN ARRAY
+an element of an array is a scalar and can take every value a scalar can take
+
+==LITERALS
+@array = (1,2,3);
+@array = (1,2,undef,4);
+@array = ('one', 'two', 'three');
+@array = ("one", 'two", "three");
+@array = qw(one two three);       # quote word
+@array = ();                      # empty array
+
+@{array}
+${array}[0]
+@{array}[0,1]
+%{array}[0,1]
+
+$array[0] = "one";
+$array[1] = "two";
+$array[2] = "three";
+@array[0,1] = (5,6);       # same as $array[0]=5; $array[1]=6
+@array[2..5] = (7,8,9,10); # the values at indices 2 to 5 are set to 7 to 10
+                           #   respectively
+
+@array="text";
+# same as @array=("text");
+# or $array[0]="text"; (plus all other values are discarded)
+
+
+==SCALARS
+
+$array[1] = $scalar
+@array = ($a, $b, $c)
+
+==ARRAY and ARRAY SLICE
+
+@array = @other_array
+@array = @other_array[1]
+@array = @other_array[2..5]
+@array = @other_array[1,2..5,-2]
+
+==HASH and HASH SLICE
+
+@array = %hash
+@array = @hash{key1,key2,key3}   # @array=qw(value1 value2 value3)
+@array = %hash{key1,key2,key3}   # @array=qw(key1 value1 key2 value2 key3 value3)
+
+==LIST and LIST SLICE
+
+@array = (LIST)[0,2..4,-1] # LIST -> anything that returns a list in list context
+
+@array = ($a, $b, $c)
+@array = ($a, $b, @other_array, $c)
+
+
+# specific values of an array are accessed with the subscript []
+
+-----------------------------------------------------------
+ASSIGNMENT TO A HASH
+
+necessary a pair number of elements ?
+
+==LITERALS
+
+==SCALARS
+
+==ARRAY and ARRAY SLICE
+necessary a pair number of elements ?
+
+==HASH and HASH SLICE
+
+==LIST and LIST SLICE
+necessary a pair number of elements ?
+
+%hash = (LIST)[0,2..4,-1] # LIST -> anything that returns a list in list context
+
+
+a value of a hash is a scalar and can take every value a scalar can take
+%hash = (one, 1, two, 2, three, 3)
+%hash = (one => 1, two => 2, three => 3)
+%hash = qw(one 1 two 2 three 3)
+%hash = ()    # empty hash
+%{hash}
+${hash}{key}
+@{hash}{key1,key2}
+%{hash}{key}
+
+# specific values of a hash are accessed with the subscript {}
+$hash{one}   = 1;
+$hash{two}   = 2;
+$hash{three} = 3;
+$hash{"space in key"} = 8;
+@hash{one, two, three} = (1,2,3)
+
+@array = ("one", 2, "three", 4);
+%hash = @array
+# same as:
+%hash = (one => 2, three => 4)
+# @array has to have a pair number elements
+# so that each key has an associated value
+
+NOTE :
+hashes don't conserve the order of the key/value pairs for security reasons,
+to avoid Algorithmic Complexity Attacks that can lead to Denial of Service
+(see perlsec)
+
+-----------------------------------------------------------
+
+ACCESSING VARIABLES
+
+print $scalar
+
+print @array             # all values
+print $array[0]          # single   value  $ sigil
+print $array[$#array]    # index of last element of @array is $#array
+print @array[0,2]        # multiple values @ sigil
+print @array[0..2]       # multiple values with range operator
+print @array[1..$#array] # multiple values with range operator
+
+print %hash              # all values
+print $hash{one}         # single value
+$hash{"space in key"}    # signle value
+print @hash{one, two}    # multiple values
+
+%hash = ("one" => 1, "two" => 2, "three" => 3);
+%subset = %hash{one, two}
+# same as :
+%subset = ("one" => 1, "two" => 2);
+
+
+######################
+#  SIGIL INFLECTION  #
+######################
+
+The sigil that prefix variables has to change,
+according to HOW MANY values are assigned or accessed
+
+1) if all the values of the variables are assigned or accessed,
+the sigil emblematic of the variable type has to be prefixed
+
+$scalar = 5;           print $scalar        # 5
+@array=(1,2,3);        print @array         # 123
+%hash=qw(one 1 two 2); print %hash          # two2one1  OR one1two2
+
+
+-----------------------------------------------------------
+
+2) if only one value is assigned or accessed, the $ sigil applies,
+whatever the type of the variable 
+( like the singular form of a noun )
+
+$scalar = 3;           print $scalar        # 3
+$array[7] = 10;        print $array[7]      # 10
+$hash{one} = 2;        print $hash{one}     # 2
+
+-----------------------------------------------------------
+
+3) if multiple values are assigned or accessed, the @ sigil applies,
+whatever the type of the variable. A
+( like the plural form of a noun that takes an -s at the end)
+
+@array=(1,2,3,4,5);    print @array[0..2,4]        # 1235
+@array[5,6,7]=(6,7,8)  print @array[0..$#array]    # 1234567
+
+%hash=(one => 1, two => 2, three => 3);
+                       print @hash{one, three}     # 13
+@hash{}
+
+-----------------------------------------------------------
+
+4) if we want to access one or more values of an array or a hash,
+WITH their keys (the keys of an array are its indexes), the % sigil applies
+
+@array=(1,2,3,4,5);    print %array[0..$#array]    # 0112233445
+@array=(1,2,3,4,5);    print %array                # doesn't work
+@array=(1,2,3,4,5);    print %array[0,4]           # 0145
+
+%hash=(one => 1, two => 2, three => 3);
+                       print %hash{one, three}   # one1three3 OR  three3one1
+
+------------------------------------------------------------
+
+5) ATTENTION /!\ !!
+
+ARRAYS    # assigning an array, with @, without subscript [], set ALL the values of the array
+@array=(1,2,3)
+@array=(5,6,7)   # the new value erase the old values
+$array[3] = 8    # the old values are conserved, a new value is added
+$array[1] = 9    # an old value is modified, the others are untouched
+@array[4,5]=(10,11)  # the old values are conserved, 2 new values are added
+
+HAHSES # assigning hash, with %, without subscript {}, set ALL the key/values of the hash
+%hash=(one => 1, two => 2)
+%hash=(three => 3, four => 4)  # one/1 and two/2 don't exists anymore
+$hash{two} = 2                 # a new key/value is added, the old ones are still there
+
+
+        ############################
+        #  SIGIL INFLECTION TABLE  #
+        ############################
+
+#-----------------Scalar-----Array-------Hash--#
+#                                              #
+# Full                                         #
+# Contents          $          @           %   #
+#                                              #
+# Individual        $          $           $   #
+# element                                      #
+#               ________                       #
+# Multiple     |        |                      #
+# elements     |   @$   |      @           @   #
+#              |        |                      #
+# Multiple     |        |                      #
+# elements     |   %$   |      %           %   #
+# with keys    |________|                      #
+#                  |                           #
+#                  \__-> this about references #
+#----------------------------------------------#
+
+
+
+####################
+#      SLICES      #
+####################
+
+slice
+    A selection of any number of elements from a list, array, or hash.
+
+a slice is a list ???
+
+
+ARRAY SLICES
+@array[1,2,3]
+@array[0..4]
+@array[0,2..$#array]
+
+HASH SLICE
+@hash{one, two}
+@hash{one, two, three}
+
+INDEX/VALUE ARRAY SLICE
+%array[1,2,3]
+%array[0..4]
+%array[0,2..$#array]
+
+KEY/VALUE HASH SLICE
+%hash{one, two}
+%hash{one, two}
+
+LIST SLICE
+(1,2,3,4,5)[1,3]        # 2 4
+(1,2,3,4,5)[1..3]       # 2 3 4
+(1,2,3,4,5)[-1]         # 5
+(1,2,3,4,5)[-4..-1]     # 2 3 4 5
+(1,2,3,4,5)[0..2,-1]    # 1 2 3 5
+
+
+$time="14:05:30";
+(split /:/, $time)[0]   # 14
+(split /:/, $time)[1,2] # 05 30
+$time="14:05:30"; print( (split /:/, $time)[0,1] )
+
+
+
+bareword filehandles ?
+
+
+expression, expression evaluated differently wether in scalar or list ontext
+contexts
+
+
+#################
+#      TODO     #
+#################
+
+what a list can be ? / what returns a list in list context ?
+
+EXAMPLES OF WHAT RETURNS A LIST
+(1,2,3,4,5)           # list literal
+(split /:/, $_)[1,3]  # list slice
+@array                # array
+%hash                 # hash
+grep LIST             # output of a function
+<STDIN>               # stdin
+<ARGV>                # file passed as arguments
+<$FH>                 # opened filehandle, read the contents of the file
+<>                    # diamond operator
+1..10                 # range operator
+"A" .. "Z"            # range operator
+`ls *.sh | grep ^a`   # standard output of a shell command
+qx/ls *.sh | grep ^a/ # standard output of a shell command
+glob "*.pl *.sh"      # same as ls *.pl *.sh  ; wildcard file matching
+<.* a*>               # same as ls -d .* a*
+# the following returns a list in list context
+$string =~ m/(pat1) (pat2) (pat3)/
+$string =~ m/(pat)/g
+$string =~ m/pat/g   ??
+
+
+what these returns in list context ? in scalar context ?
+
+
+                             LIST                         SCALAR
+@array                  list of elements             number of elements
+%hash                   list of key/value pairs      number of key/value pairs
+LIST                    list                         last element
+                                                 (mostly used for list literals)
+<filehandle>            list of all the lines        the next line to be read
+glob "*.pl"/ <*.pl>     list of filename expansion   the next filename
+`command`, qx/command/  list of all the lines c
+
+
+TRICK to get the number of elements of a list
+$count=()=LIST; print $count
+print $cout=()=LIST
+
+a LIST returns the last element in scalar context, but this case is applies almost only to list literals, ie. $scalar=(5,6,7)  # $scalar=7
+functions that returns a list in list context generally have a specific value returned when is scalar context. This is why this is not seen a lot. For example,
+grep and split returns the number of elements in scalar context
+
+The cases in which a LIST is evaluated in SCALAR context and returns the last element:
+
+$scalar=(5,6,7)  # scalar=7
+$array[5..7]     # 5..7 evaluates to (5,6,7) and itself return the last element in scalar context. The SCALAR context is created because of the $ dollar sigil. So $array[5..7] is the same as $array[7]
+$array[5,6,7]
+
+$scalar = 5..7;
+$scalar = (5..7);
+
+m//
+s///
+tr/// y///
+
+.. range operator
+
+
+
+
+-------------------------------------
+what create a list context ?
+
+list operators ---> functions that takes a list as an argument
+assignment to an array, a hash, a list of scalars
+
+parenthesis ?
+-talk about comma operators
+
+forcing scalar context with the operator "scalar"
+
+print @array
+print scalar @array
+
+array ref [ array ]
+hash ref { hash }
+subscripts [indexes] {keys}
+
+-------------------------------------
+
+
+($a, $b, $c) = <>
+$d = <> ???
+
+if no specific value for list context, return a 1 element list of the evaluation in scalar context
+
+CAREFUL
+
+print  (1,2,3,4,5)[2]   # doesn't work because here, the parenthesis are what delimites the function print arguments
+print ((1,2,3,4,5)[2])  # work
+
+LISTS/arrays slurp everything
+($a, $b, @array, $c) = LIST
+
+arrays get flatten in a list
+
+another thing forgotten
+
+SECTIONS
+
+filehandles
+operators
+-----------------------
+$var++ --> no need to initialize:
+$var initialized at 0 by default
+AWK does the same thing
+
+$var+=$number --> initializaation required
+
+###########################
+#   in common with sed    #
+###########################
+
+&     -->  $& (not in the semantics)
+&  in sed is the whole pattern space
+$& in perl is the entire substring that matched
+
+
+s///  -->  s///
+y///  -->  y/// tr///
+
+\1  -->  $1
+\9  -->  $9
+
+
+###########################
+#   in common with awk    #
+###########################
+-n while(<>){}
+-F to define FS / autosplit
+
+SPECIAL VARIABLES    use English / -MEnglish
+RS    $/                     $RS
+FS    ? (defined with -F because autosplit not automatic)
+ORS   $\                     $ORS
+OFS   $,                     $OFS
+NR    $.                     $NR
+$0    $_  pattern space      $ARG   @_ is @ARG
+ARGV      @ARGV
+ARGC      $#ARGV+1
+ENVIRON   %ENV
+FILENAME  $ARGV
+          $0                 $PROGRAM_NAME
+
+SUBSEP    $;                 $SUBSEP
+
+#################################################################
+
+before (which version ?) there was even a special variable ( $[ )
+to have arrays starting at 1 instead of 0
+
+
+    $SUBSCRIPT_SEPARATOR
+    $SUBSEP
+    $;      The subscript separator for multidimensional array emulation. If
+            you refer to a hash element as
+
+                $foo{$x,$y,$z}
+
+            it really means
+
+                $foo{join($;, $x, $y, $z)}
+
+            But don't put
+
+                @foo{$x,$y,$z}      # a slice--note the @
+
+            which means
+
+                ($foo{$x},$foo{$y},$foo{$z})
+
+            Default is "\034", the same as SUBSEP in awk. If your keys
+            contain binary data there might not be any safe value for $;.
+
+            Consider using "real" multidimensional arrays as described in
+            perllol.
+
+            Mnemonic: comma (the syntactic subscript separator) is a
+            semi-semicolon.
+
+#################################################################
+
+
+BEGIN and END blocks
+
+awk '$2  ~ /^a/'   perl -lane 'print if $F[1] =~ /^a/'
+awk '$2 !~ /^a/'   perl -lane 'print if $F[1] !~ /^a/'
+
+
+awk '{print match($0,/^l/)}' wd
+awk '{print match($0,/[0-9]/)}' wd
+awk '{if(match($0,/^l/)){print}}' wd
+awk 'match($0,/^l/){print}' wd
+
+
+
+functions that do something, have a side effect,
+while returning a related value
+
+certain functions have the default variable $0 if not explicitly specified
+-------------------------------------
+context !!
+==string
+==numeric
+==boolean
+pattern
+if
+while
+seconf slot or for loop
+==array ?
+when an function's argument require an array identifier
+-> array without subscript = array
+-> array with    subscript = scalar
+---------------------------------------------------------------------------------
+==boolean
+The first subexpression of a conditional expression
+An expression operated on by logical NOT, logical AND, or logical OR
+The second expression of a for statement
+The expression of an if statement
+The expression of the while clause in either a while or do...while statement
+An expression used as a pattern (as in Overall Program Structure)
+==array
+An array  name  followed by a subscript within square brackets can be used as an lvalue and thus as an expression
+Unsubscripted array names can be used in only the following contexts:
+A parameter in a function definition or function call
+The NAME token following any use of the keyword in as specified in the grammar (see Grammar); if  the
+           name used in this context is not an array name, the behavior is undefined
+
+
+
+The awk language supplies arrays that are used for storing numbers or strings.  Arrays need  not  be  declared
+They shall initially be empty, and their sizes shall change dynamically. The subscripts, or element
+identifiers, are strings, providing a type of associative array capability. An array  name  followed
+by a subscript within square brackets can be used as an lvalue and thus as an expression, as described in
+       the grammar; see Grammar.  Unsubscripted array names can be used in only the following contexts:
+
+*  A parameter in a function definition or function call
+
+*  The NAME token following any use of the keyword in as specified in the grammar (see Grammar); if  the
+   name used in this context is not an array name, the behavior is undefined
+
+A  valid  array  index  shall consist of one or more <comma>-separated expressions, similar to the way in
+which multi-dimensional arrays are indexed in some programming languages. Because awk arrays  are  really
+one-dimensional, such a <comma>-separated list shall be converted to a single string by concatenating the
+string values of the separate expressions, each separated from the other by the value of the SUBSEP variable. 
+Thus, the following two index operations shall be equivalent:
+
+var[expr1, expr2, ... exprn]
+
+var[expr1 SUBSEP expr2 SUBSEP ... SUBSEP exprn]
+
+
+
+-------------------------------------
+variables initialized at 0 when var++  / $var++
+---------------------------
+perl can do
+-pattern-action paradigm
+-autosplit
+-same function or equivalent(print printf sub gsub)
+-same operators ?
+---------------------------
+see notes on paper
+
+see awk.1p POSIX
+
+PATTERNS
+
+A  pattern  is
+- any valid expression, 
+- a range specified by two expressions separated by a comma,
+- or one of the  two  special  patterns BEGIN or END.
+-------------------------------------------------------------------
+
+which shall iterate, assigning each index of array to variable in
+an unspecified order. The results of adding new elements to array
+within  such  a  for  loop  are undefined. If a break or continue
+statement occurs outside of a loop, the behavior is undefined.
+
+The delete statement shall remove an  individual  array  element.
+Thus, the following code deletes an entire array:
+
+for (index in array)
+delete array[index]
+-------------------------------------------------------------------
+
+one function split into 2 operators
+
+=~       Binding Operator
+m// s/// Regexp Quote-Like Operators
+
+(Quote-Like Operators)
+
+$scalar =~ m//            match($scalar, //)
+$scalar =~ s///           sub($scalar,//,"")
+$scalar =~ tr//           tr($scalar, "","")
+
+s/regex/replacement/modifiers
+
+replacement -> double quotes string, $1 $2 $3 available
+
+--------------------------------------------------------------------------------------------------
+=~ is left associative
+--------------------------------------------------------------------------------------------------
+$x = "Cats are great.";
+print $x =~ s/Cats/Dogs/r =~ s/Dogs/Frogs/r =~
+    s/Frogs/Hedgehogs/r, "\n";
+# prints "Hedgehogs are great."
+
+echo "Cats are great." | sed 's/Cats/Dogs/' | sed 's/Dogs/Frogs/' | sed 's/Frogs/Hedgehogs/'
+--------------------------------------------------------------------------------------------------
+
+           @foo = map { s/[a-z]/X/r } qw(a b c 1 2 3);
+           # @foo is now qw(X X X 1 2 3)
+--------------------------------------------------------------------------------------------------
+
+       The evaluation modifier "s///e" wraps an "eval{...}" around the replacement string and the evaluated result is substituted
+       for the matched substring.  Some examples:
+
+           # reverse all the words in a string
+           $x = "the cat in the hat";
+           $x =~ s/(\w+)/reverse $1/ge;   # $x contains "eht tac ni eht tah"
+
+           # convert percentage to decimal
+           $x = "A 39% hit rate";
+           $x =~ s!(\d+)%!$1/100!e;       # $x contains "A 0.39 hit rate"
+
+       The last example shows that "s///" can use other delimiters, such as "s!!!" and "s{}{}", and even "s{}//".  If single quotes
+       are used "s'''", then the regex and replacement are treated as single-quoted strings.
+--------------------------------------------------------------------------------------------------
+
+       If the empty regex "//" is used, the string is split into
+       individual characters.  If the regex has groupings, then the list
+       produced contains the matched substrings from the groupings as
+       well:
+
+           $x = "/usr/bin";
+           @parts = split m!(/)!, $x;  # $parts[0] = ''
+                                       # $parts[1] = '/'
+                                       # $parts[2] = 'usr'
+                                       # $parts[3] = '/'
+                                       # $parts[4] = 'bin'
+
+       Since the first character of $x matched the regex, "split"
+       prepended an empty initial element to the list.
+--------------------------------------------------------------------------------------------------
+
+
+###########################
+#   $_ DEFAULT VARIABLE   #
+###########################
+
+
+for       (@array){ print      }
+for       (@array){ print $_   }
+for $_    (@array){ print $_   }
+for $var  (@array){ print $var }
+
+# same the foreach loop
+# for and foreach are synonym keywords
+
+while (<>)      {print      }
+while (<>)      {print $_   }
+while ($_ = <>) {print $_   }
+while ($line=<>){print $line}
+
+INSIDE :
+grep BLOCK
+map BLOCK
+(inside embeded code block)
+    perl -le '"abcde" =~ / (?{ print $_ })  /x'
+    perl -le '"abcde" =~ / (??{ print $_ })  /x'
+
+ATTENTION to embedded loops
+
+while(<STDIN>) {
+	# here $_ = line from stdin
+	foreach(@patterns){
+		# here $_ = element of @patterns
+	}
+}
+
+in this case, set the variable for the looping constructs,
+one suffice in this case, but you can do it for both
+
+while($line=<STDIN>){
+	
+	foreach $pat (@patterns){
+
+	}
+}
+
+#################################
+#   LISTS EXPRESSIONS CONTEXT   #
+#################################
+
+lists
+(1, 2, 3)[1]
+($a, $b, $c) = (1, 2, 3)   # $a = 1, $b = 2, $c = 3
+($a, $b, $c) = (1, 2, 3)
+lists unix pipes
+list operators (functions), right associative, no need for parenthesis most of the time
+
+Here's an extract of perlglossary :
+
+LIST
+    A syntactic construct representing a comma- separated list of
+    expressions, evaluated to produce a list value.  Each
+    expression in a "LIST" is evaluated in list context and
+    interpolated into the list value.
+
+list
+    An ordered set of scalar values.
+
+list context
+    The situation in which an expression is expected by its
+    surroundings (the code calling it) to return a list of values
+    rather than a single value. Functions that want a "LIST" of
+    arguments tell those arguments that they should produce a
+    list value. See also context.
+
+list operator
+    An operator that does something with a list of values, such
+    as "join" or "grep". Usually used for named built-in
+    operators (such as "print", "unlink", and "system") that do
+    not require parentheses around their argument list.
+
+list value
+    An unnamed list of temporary scalar values that may be passed
+    around within a program from any list-generating function to
+    any function or construct that provides a list context.
+----------------------------------------------------------
+
+what you have to remember:
+
+1) a list is not the same thing as an array.
+- an array is a durable storage of sequence of values in memory that you can access anytime
+- a list is a temporary sequence of scalar values
+
+it's not a variable type
+it's a value :
+-that is returned from the evaluation of an expression in list context,
+-that is returned from a function in list context
+
+a list value can only be produced in list context
+
+a list can
+
+you can see it as data moving from on place to another
+
+
+
+
+
+In the Unix shell, a pipe is a way of connecting the input and output of 2 commands via stdin and stdout. To make this work, commands are standa to take their input from stdin and dump their output in stdout. This standardization of the input and output of commands allow easy composition of different Unix utilities such as grep, sed, awk, tr, cut, sort, etc..
+
+Perl introduced the concept of LIST in order to extend further the possibilities of combining functions. Except that LISTS now allow to easliy combine: functions, list operators, expressions, arrays, loops and filehandles.
+
+EXAMPLES OF WHERE A LIST CAN BE USED
+($a, $b, $c) = LIST       # assign the firsts 3 elements of a list to 3 scalar variables
+@array = LIST             # assign all the elements of a list to an array
+($a, $b, @array) = LIST   # assign the firsts 2 elements of a list to 2 scalar variables,
+                        and assign all the remaining elements to an array
+foreach (LIST) {}         # iterate over the elements of a list
+print map {} grep {} LIST # feed a list as input to a function
+print $FH LIST            # write a list to a file
+print LIST                # printing a list
+
+
+
+
+
+
+
+####################
+#     CONTEXT      #
+####################
+
+####################
+#    EXPRESSIONS   #
+####################
+
+####################
+#    CONDITIONALS  #
+####################
+
+Statement Modifier:
+if EXPR
+
+do BLOCK if EXPR
+
+eval EXPR if EXPR  ???
+eval BLOCK if EXPR ???
+
+
+Comound Statements:
+if (EXPR) BLOCK
+if (EXPR) BLOCK else BLOCK
+if (EXPR) BLOCK elsif (EXPR) BLOCK ...
+if (EXPR) BLOCK elsif (EXPR) BLOCK ... else BLOCK
+
+unless (EXPR) BLOCK
+unless (EXPR) BLOCK else BLOCK
+unless (EXPR) BLOCK elsif (EXPR) BLOCK ...
+unless (EXPR) BLOCK elsif (EXPR) BLOCK ... else BLOCK
+
+-------------------------------------------------------------
+if or unless create a boolean context for EXPR
+
+-------------------------------------------------------------
+CLASSICAL COMPARISONS
+
+Numeric comparison            String comparison              
+  ==  equality                  eq  equality
+  !=  inequality                ne  inequality
+  <   less than                 lt  less than
+  >   greater than              gt  greater than
+  <=  less than or equal        le  less than or equal
+  >=  greater than or equal     ge  greater than or equal
+
+lt, gt, le and ge are for alphabetic order comparison
+-----------------------------------------------------
+WHAT IS TRUE OR FALSE
+
+             FALSE                   TRUE
+undef        always                 never
+$string       ""               length $string > 0
+$number        0                  $number != 0
+@array     empty array        at least one element
+%hash      empty hash         at least one key/value pair
+list       empty list         at least one element
+
+EXAMPLES:
+
+print "true" if $scalar
+print "true" if @array
+print "true" if %hash
+print "true" if grep /pattern/, <ARGV> (list example)
+print "true" if $scalar =~ m/pattern/
+print "true" if lc($x) eq lc($y)
+print "true" if uc($x) eq uc($y)
+print "true" if fc($x) eq fc($y)
+
+while (<>) {
+	if (m/^\d+$/) {
+		push @numbers, $_;
+	}
+	elsif (m/^\w/) {
+		push @words, $_;
+	}
+}
+
+####################
+#      LOOPS       #
+####################
+
+statement modifiers
+
+while EXPR
+for LIST       --> no VAR ? $_ ?
+foreach LIST   --> no VAR ? $_ ?
+
+do BLOCK while EXPT
+
+do BLOCK while EXPR -> loop executed at least one even if EXPR returns false
+eval EXPR while EXPR  ???
+eval BLOCK while EXPR ???
+
+do BLOCK for LIST
+eval EXPR for LIST  ???
+eval BLOCK for LIST ???
+
+compound statements
+
+LABEL while (EXPR) BLOCK
+LABEL while (EXPR) BLOCK continue BLOCK
+
+LABEL until (EXPR) BLOCK
+LABEL until (EXPR) BLOCK continue BLOCK
+
+LABEL for (EXPR; EXPR; EXPR) BLOCK
+LABEL for VAR (LIST) BLOCK
+LABEL for VAR (LIST) BLOCK continue BLOCK
+
+LABEL foreach (EXPR; EXPR; EXPR) BLOCK
+LABEL foreach VAR (LIST) BLOCK
+LABEL foreach VAR (LIST) BLOCK continue BLOCK
+
+VAR is optional, and if not set, $_ is the default variable used
+
+while(<STDIN>) {
+	s/^\S+\s+//;
+	print;
+}
+
+is the same as
+
+while ($_=<STDIN>) {
+	$var =~ s/^\S+\s+//;
+	print $var;
+}
+
+
+while ($line = <STDIN>) {
+	$line =~ s/^\S+\s+//;
+	print $line;
+}
+
+LABEL is optional
+
+
+C-style for loop
+
+for ($i=0; $i < @array; $i++) { ...  }
+for ($i=0; $i <= $#array; $i++) { ...  }
+the length function doesn't applies to @arrays, only $scalars/strings
+
+for and foreach are synonyms,
+use for for brevity, use foreach for readability
+that said, it is c
+
+@array
+filehandles
+glob
+``
+..
+list returned from a function / operator
+etc..
+
+
+										
+next  -> next iteration
+last  -> quit the innermost lop
+redo  -> 
+
+          continue BLOCK
+next          executed
+last        not executed
+redo        not executed
+
+
+
+####################
+#    MATCHING      #
+####################
+
+m/*PATTERN*/msixpodualngc
+
+MODIFIERS
+m Treat the string being matched against as multiple lines
+s Treat the string as single line
+i case insensitive
+x permit white space and comments -> spaces have to be escaped
+n non capture ?
+g global
+r return  # not for m but for s and tr/y
+---------------------------------------------------
+// is equivalent to m//
+   and m|| m##  m{} m() m<> m[] m@@ m""
+
+m'' (doesn't do interpolation contrary to all others)
+---------------------------------------------------
+CHARACTERS NEEDING TO BE ESCAPED:
+
+- the metacharacters: 
+
+^ $ . | ( ) [ ] * + ? { } - (only inside []? if not at begining or end? ) 
+
+{}[]()^$.|*+?\
+
+
+- the delimiters --> / if m//, | if m||, etc,,
+- \ --> escaped \ like this \\
+-------------------------------------------------------------------------
+
+
+                   PURPOSE                                  WHERE
+  \   Escape the next character                    Always, except when
+                                                   escaped by another \
+  ^   Match the beginning of the string            Not in []
+        (or line, if /m is used)
+  ^   Complement the [] class                      At the beginning of []
+  .   Match any single character except newline    Not in []
+        (under /s, includes newline)
+  $   Match the end of the string                  Not in [], but can
+        (or before newline at the end of the       mean interpolate a
+        string; or before any newline if /m is     scalar
+        used)
+  |   Alternation                                  Not in []
+  ()  Grouping                                     Not in []
+  [   Start Bracketed Character class              Not in []
+  ]   End Bracketed Character class                Only in [], and
+                                                     not first
+  *   Matches the preceding element 0 or more      Not in []
+        times
+  +   Matches the preceding element 1 or more      Not in []
+        times
+  ?   Matches the preceding element 0 or 1         Not in []
+        times
+  {   Starts a sequence that gives number(s)       Not in []
+        of times the preceding element can be
+        matched
+  {   when following certain escape sequences
+        starts a modifier to the meaning of the
+        sequence
+  }   End sequence started by {
+  -   Indicates a range                            Only in [] interior
+  #   Beginning of comment, extends to line end    Only with /x modifier
+
+-----------------------------------------------------------
+SPECIAL VARIABLES
+
+$<digits>  $1 $2 $3 ...  (capturing groups)
+@{^CAPTURE}
+
+$&   $MATCH   # with use English
+${^MATCH}
+$`   $PREMATCH
+${^PREMATCH}
+$'   $POSTMATCH
+${^POSTMATCH}
+$+   $LAST_PAREN_MATCH
+@+   @LAST_MATCH_END
+@-   @LAST_MATCH_START
+%+   %{^CAPTURE} %LAST_PAREN_MATCH
+%-   %{^CAPTURE_ALL}
+$^N  $LAST_SUBMATCH_RESULT
+$^R  $LAST_REGEXP_CODE_RESULT    # (?{ code })
+${^RE_COMPILE_RECURSION_LIMIT}   # Perl v5.30.0
+${^RE_DEBUG_FLAGS}
+${^RE_TRIE_MAXBUF}
+--------------------------------------------------------------------------------------------
+
+%+   %{^CAPTURE} %LAST_PAREN_MATCH  named capture buffers
+@{^CAPTURE}                         capture buffers (named and unnamed)
+
+%- named capture groups in the last successful match
+To each capture group name, it associates a reference to an array
+containing the list of values captured by all buffers with that
+name (should there be several of them), in the order where they appear.
+
+@+ holds the offsets of the ends       of the last successful submatches
+@- holds the offsets of the beginnings of the last successful submatches
+$+ text matched by the highest used capture group of the last successful search pattern
+
+--------------------------------------------------------------------------------------------
+capture groups / capture buffers
+
+perl -e '@patterns=(qr/1/,qr/2/);while(<>){print if $_ ~~ @patterns }' wd
+
+
+perl -e '@patterns=(qr/1/,qr/2/);while(<>){print if $_ ~~ @patterns }' wd
+perl -e '@patterns=map {qr/$_/} qw(1 2);while(<>){print if $_ ~~ @patterns }' wd
+perl -e '@patterns=map {qr/\b$_\b/} qw(1 2);while(<>){print if $_ ~~ @patterns }' wd
+
+perl -e "@patterns=("one","two","three","four","five");$var="four";for $pat (@patterns){ $match=$pat, last if $var =~ m/$pat/; }print $match"
+
+better to use
+
+foreach (`command`)
+than
+while (`command`) --> doesn't work ??
+
+
+print "true" if "text" =~  /^t/
+print "true" if "text" =~ m/^t/
+print "true" if "text" =~ m|^t|
+
+$var="text"; print "true" if $var =~ m/^t/
+$_  ="text"; print "true" if         m/^t/
+
+
+
+$1 $2 etc accessible outside the match opeator
+
+
+foreach(@array) {
+	if   (m/(pat)/){ push @out, $1 }
+	elsif(m//){ $temp .= $_ }
+}
+
+
+# AWK-like pattern-action paradigm
+foreach(@array) {
+	m// and push (@out, $temp), next;
+	m// and $temp .= $_, next;
+}
+
+# AWK-like pattern-action paradigm, more practial BLOCKS instead of the comma operator
+foreach(@array) {
+	m// and do { push @out, $temp; next }
+	m// and do { $temp .= $_;      next }
+}
+
+m/garbage(pat1)garbage(pat2)/; print "$1 $2"
+m/garbage(?<one>pat1)garbage(?<two>pat2)/; print "$+{one} $+{two}"
+
+perl -le '$/=undef;$,="\n"; $file=<>; @matches=$file=~m/(line) (\d+)/g; print @matches' wd
+
+####################
+#     REGEXES      #
+####################
+
+PERL AND REGEX SYMBIOSIS
+
+variables concerning the regex match can be accessed outside of the rege, like normal variable
+(except that most of them are read-only, and dynamically scoped)
+
+
+arbitrary perl code can be evaluated in the regex (?{CODE})   (??{CODE})
+()(?{print $+})  --> attention, can print an intermediate $+, that can change because
+the start of the regex avance in the string, or because of backtracking
+
+the total regex may still fail and you'll stil get printed
+
+
+USE OF REGEXES
+
+m//             match, extract, filter
+s///            substitute (find and replace) (modify)
+split //        split
+
+
+(the regex is an implicit INPUT)
+fundamental mechanism = MATCH, then act on this match
+MATCH      INPUT = string  OUTPUT = boolean -> true or false (decision)
+actions on wether or not there is a match :
+FILTER (=SEARCH)       INPUT = list of strings     OUTPUT = (reduced) list of strings
+EXTRACT                INPUT = string     OUTPUT = substring / list of substrings (not contains neccessarily the whole string)
+SUBSTITUTE (find and replace) (can be used to obtain substrings, a copy has to be made if we want to keep original string)
+                       INPUT = string     OUTPUT = same string with substrings deleted or replaced by other strings
+SPLIT                  INPUT = string     OUTPUT = list of substrings (all substrings combined make the whole input string)
+COUNTING               INPUT = string     OUTPUT = number
+
+can be used to (besides the above) :
+counting         (filter then count)
+input validation (match)
+text formating   (can be any combination of filter extract substitute split) (so as to be more suitable for printing, storing, or processing the input text)
+
+
+use of binding operator
+m//
+s///
+tr///
+
+The Irregularity of Regular Expressions - Jordan Adler (2021)
+counting
+matching, potentially capturing them
+substitution
+splitting
+
+-------------------------------------
+
+
+QUOTING
+$pat="youtube.com/watch?v";
+"www.youtube.com/watch?v=XXXXXXXXXXX =~ m|$pat|      # no match
+
+$pat="youtube\\.com/watch\\?v";
+"www.youtube.com/watch?v=XXXXXXXXXXX"=~ m|$pat|      # MATCH
+"www.youtube.com/watch?v=XXXXXXXXXXX"=~ m|youtube\.com/watch\?v| # MATCH
+
+
+$pat="\Qyoutube.com/watch?v\E";
+"www.youtube.com/watch?v=XXXXXXXXXXX =~ m|$pat|      # MATCH
+
+$pat=qr|\Qyoutube.com/watch?v\E|;XXXXXXXXXXX
+"www.youtube.com/watch?v=XXXXXXXXXXX =~ m|$pat|      # MATCH
+
+$pat= qr|\Qyoutube.com/watch?v=\E.{11}|;
+"www.youtube.com/watch?v=XXXXXXXXXXX" =~ $pat        # MATCH
+
+$pat="youtube.com/watch?v";
+"www.youtube.com/watch?v=XXXXXXXXXXX" =~ m|\Q$pat\E| # MATCH
+
+$pat="youtube.com/watch?v";
+$pat= quotemeta $pat;
+OR
+$pat= quotemeta "youtube.com/watch?v";
+"www.youtube.com/watch?v=XXXXXXXXXXX" =~ m|$pat|     # MATCH
+
+\Q  \E    quotemeta
+
+
+\K --> everything to the left is a positive lookbehind pattern
+
+####################################################################
+metacharacters
+{}[]()^$.|*+?\
+The special characters for a character class are
+"-]\^$" and are matched using an escape:
+If '-' is the first or last character in a character class, it is treated as an ordinary character.
+-------------------------------------------------------------
+
+modifiers
+M    msixpodualngc  
+S    msixpodualngcer
+TR/Y cdsr
+
+S    msixpodualngcer
+TR/Y  s    d     c r
+
+-------------------------------------------------------------
+backtracking
+-------------------------------------------------------------
+Combining RE Pieces
+
+-------------------------------------------------------------
+quantifiers
+greedy, lazy, possessive
+*           Match 0 or more times
++           Match 1 or more times
+?           Match 1 or 0 times
+{n}         Match exactly n times
+{n,}        Match at least n times
+{n,m}       Match at least n but not more than m times
+
+*?        Match 0 or more times, not greedily
++?        Match 1 or more times, not greedily
+??        Match 0 or 1 time, not greedily
+{n}?      Match exactly n times, not greedily (redundant)
+{n,}?     Match at least n times, not greedily
+{n,m}?    Match at least n but not more than m times, not greedily
+
+*+     Match 0 or more times and give nothing back
+++     Match 1 or more times and give nothing back
+?+     Match 0 or 1 time and give nothing back
+{n}+   Match exactly n times and give nothing back (redundant)
+{n,}+  Match at least n times and give nothing back
+{n,m}+ Match at least n but not more than m times and give nothing back
+-------------------------------------------------------------
+
+escape sequences
+
+-------------------------------------------------------------
+Character Classes and other Special Escapes
+
+-------------------------------------------------------------
+character class
+-bracketed character classes
+The special characters for a character class are
+"-]\^$" and are matched using an escape:
+If '-' is the first or last character in a character class, it is treated as an ordinary character.
+
+-------------------------------------------------------------
+assertions
+Besides "^" and "$", Perl defines the following zero-width
+assertions:
+
+ \b{}   Match at Unicode boundary of specified type
+ \B{}   Match where corresponding \b{} doesn't match
+ \b     Match a \w\W or \W\w boundary
+ \B     Match except at a \w\W or \W\w boundary
+ \A     Match only at beginning of string                               (same as ^ when not multiline modifier) (very useful when there is the m modifier)
+ \Z     Match only at end of string, or before newline at the end (same as $ without m modifier)
+ \z     Match only at end of string
+ \G     Match only at pos() (e.g. at the end-of-match position
+               of prior m//g)
+
+in scalar context
+
+first      $string =~ m/\Gpattern/g  matches if  m/^pattern/ matches
+
+subsequent $string =~ m/\Gpattern/g  matches if  m/^patternpattern/ matches
+			etc ...
+(provided that $string didn't get assigned to since, even if it conserves the same value)
+
+-------------------------------------------------------------
+
+anchors -> specify where there should be a match
+
+-------------------------------------------------------------
+capture groups
+-------------------------------------------------------------
+quoting metacharacters
+-------------------------------------------------------------
+extended patterns
+
+       "(?#text)"
+
+       "(?adlupimnsx-imnsx)"
+       "(?^alupimnsx)"
+
+       "(?:pattern)"
+       "(?adluimnsx-imnsx:pattern)"
+       "(?^aluimnsx:pattern)"
+
+       "(?|pattern)"
+
+       Lookaround Assertions
+           "(?=pattern)"
+           "(*pla:pattern)"
+           "(*positive_lookahead:pattern)"
+
+           "(?!pattern)"
+           "(*nla:pattern)"
+           "(*negative_lookahead:pattern)"
+
+           "(?<=pattern)"
+           "\K"
+           "(*plb:pattern)"
+           "(*positive_lookbehind:pattern)"
+
+           "(?<!pattern)"
+           "(*nlb:pattern)"
+           "(*negative_lookbehind:pattern)"
+
+       "(?<NAME>pattern)"
+       "(?'NAME'pattern)"
+
+       "\k<NAME>"
+       "\k'NAME'"
+
+       "(?{ code })"
+       "(??{ code })"
+
+       "(?PARNO)" "(?-PARNO)" "(?+PARNO)" "(?R)" "(?0)"
+       "(?&NAME)"
+
+       "(?(condition)yes-pattern|no-pattern)"
+       "(?(condition)yes-pattern)"
+
+       "(?>pattern)"
+       "(*atomic:pattern)"
+
+       "(?[ ])"
+
+
+-------------------------------------------------------------
+-------------------------------------------------------------
+-------------------------------------------------------------
+-------------------------------------------------------------
+-------------------------------------------------------------
+
+-------------------------------------------------------------
+
+
+
+####################################################################
+
+   Combining RE Pieces
+       Each of the elementary pieces of regular expressions which were
+       described before (such as "ab" or "\Z") could match at most one
+       substring at the given position of the input string.  However, in
+       a typical regular expression these elementary pieces are combined
+       into more complicated patterns using combining operators "ST",
+       "S|T", "S*" etc.  (in these examples "S" and "T" are regular
+       subexpressions).
+
+       Such combinations can include alternatives, leading to a problem
+       of choice: if we match a regular expression "a|ab" against "abc",
+       will it match substring "a" or "ab"?  One way to describe which
+       substring is actually matched is the concept of backtracking (see
+       "Backtracking").  However, this description is too low-level and
+       makes you think in terms of a particular implementation.
+
+       Another description starts with notions of "better"/"worse".  All
+       the substrings which may be matched by the given regular
+       expression can be sorted from the "best" match to the "worst"
+       match, and it is the "best" match which is chosen.  This
+       substitutes the question of "what is chosen?"  by the question of
+       "which matches are better, and which are worse?".
+
+       Again, for elementary pieces there is no such question, since at
+       most one match at a given position is possible.  This section
+       describes the notion of better/worse for combining operators.  In
+       the description below "S" and "T" are regular subexpressions.
+
+
+       "ST"
+           Consider two possible matches, "AB" and "A'B'", "A" and "A'"
+           are substrings which can be matched by "S", "B" and "B'" are
+           substrings which can be matched by "T".
+
+           If "A" is a better match for "S" than "A'", "AB" is a better
+           match than "A'B'".
+
+           If "A" and "A'" coincide: "AB" is a better match than "AB'"
+           if "B" is a better match for "T" than "B'".
+
+       "S|T"
+           When "S" can match, it is a better match than when only "T"
+           can match.
+
+           Ordering of two matches for "S" is the same as for "S".
+           Similar for two matches for "T".
+
+       "S{REPEAT_COUNT}"
+           Matches as "SSS...S" (repeated as many times as necessary).
+
+       "S{min,max}"
+           Matches as "S{max}|S{max-1}|...|S{min+1}|S{min}".
+
+       "S{min,max}?"
+           Matches as "S{min}|S{min+1}|...|S{max-1}|S{max}".
+
+       "S?", "S*", "S+"
+           Same as "S{0,1}", "S{0,BIG_NUMBER}", "S{1,BIG_NUMBER}"
+           respectively.
+
+       "S??", "S*?", "S+?"
+           Same as "S{0,1}?", "S{0,BIG_NUMBER}?", "S{1,BIG_NUMBER}?"
+           respectively.
+
+       "(?>S)"
+           Matches the best match for "S" and only that.
+
+       "(?=S)", "(?<=S)"
+           Only the best match for "S" is considered.  (This is
+           important only if "S" has capturing parentheses, and
+           backreferences are used somewhere else in the whole regular
+           expression.)
+
+       "(?!S)", "(?<!S)"
+           For this grouping operator there is no need to describe the
+           ordering, since only whether or not "S" can match is
+           important.
+
+       "(??{ EXPR })", "(?PARNO)"
+           The ordering is the same as for the regular expression which
+           is the result of EXPR, or the pattern contained by capture
+           group PARNO.
+
+       "(?(condition)yes-pattern|no-pattern)"
+           Recall that which of yes-pattern or no-pattern actually
+           matches is already determined.  The ordering of the matches
+           is the same as for the chosen subexpression.
+
+
+       The above recipes describe the ordering of matches at a given
+       position.  One more rule is needed to understand how a match is
+       determined for the whole regular expression: a match at an
+       earlier position is always better than a match at a later
+       position.
+
+
+
+####################################################################
+
+()     capturing group
+(?:)   non capturing group -> useful for quantifiers?
+
+(?<name>)  named capturing group
+(?&name)   recurse to a named subpattern
+(?PARNO)  (?1) (?2) etc recurse to a named subpattern (non named capturing group)
+
+(?=)   positive lookahead
+(?!)   negative lookahead
+(?<=)  positive lookbehind
+(?<!)  negative lookbehind
+
+BACKREFERENCES
+\g{name}  --> named backreference -> name has to starts with non-digit character 
+\k{name}  --> named backreference   (.Net regex)
+\k<name>  --> named backreference   (.Net regex)
+\k'name'  --> named backreference   (.Net regex)
+\g1
+\g{1}
+\g-1      --> relative backreference
+\g{-1}    --> relative backreference
+\1
+
+
+RECIPIES
+
+multi-line matching
+
+$count = @matches =~ m/(pat1) (pat2) (pat3)/
+$count = @matches =~ m/(pat)/g    # returns a list of match groupings
+$count = @matches =~ m/pat/g      # returns a list of matches to the whole regex
+
+"one two three four five" =~ /(\w+) (\w+) (\w+)/
+
+undef if not found ?
+
+
+matching balanced text --> exctract function definitions of source code
+
+
+regexes can match multiple strings, but a match can be done in multipe ways,
+which one matches ?? ~~~ VAGUE
+
+
+
+
+
+####################
+#     SCRIPTS      #
+####################
+
+#!/usr/bin/perl
+use strict
+use warnings
+my
+
+sub subroutines @_
+
+__DATA__ __END__ <DATA>
+
+############################
+#   BASIC INPUT / OUTPUT   #
+############################
+
+Perl has a lot of something called Special Variables.
+In a way they are a little like Unix's shell environment variables,
+that inlfuence the output of some commands.
+
+They are like an invisible input arguments of functions. But instead
+of passing it everytime you call the function/operator,
+you set it like you would set a normal variable, and the function
+/ operator will access its value, and this will influence its output.
+
+Here's are the most common variables that influence input and output.
+
+$/  RS  RECORD SEPARATOR
+$,  OFS OUTPUT FIELD SEPARATOR
+$\  ORS OUTPUT RECORD SEPARATOR
+$"  list separator -> when array or array slice is interpolated into a double-quoted string
+
+THE DEFAULT VALUES
+$/    "\n"   --> File::Stream - Regular expression delimited records from streams
+$,     ""
+$\     ""
+$"     " "
+
+THE FUNCTIONS / OPERATORS THEY INFLUENCE
+$/ -> <> <ARGV> <STDIN> <$FH> readline (the function internal to the filehandles)
+$, -> say
+$\ -> say, print
+$" -> say, print
+---------------------------------------------------------
+WHAT $, and $, DO
+
+print "text"  -> "text" $\
+print $var    ->  $var  $\
+
+print LIST     ->  elem1     $, elem2     $, elem3     $\
+print @array   ->  $array[0] $, $array[1] $, $array[2] $\
+
+print $var, "text", $var  ->  $var  $, "text" $, $var  $\
+print $var1, $var2, $var3 ->  $var1 $, $var2  $, $var3 $\
+
+print "@array" ->  $array[0] $" $array[1] $" $array[2] $\
+print "@array[1,2]" ->          $array[1] $" $array[2] $\
+
+this means that @ have to be escaped to avoid interpolation
+(even if what follows @ doesn't make an identifier 
+of a defined @array)
+
+foreach(@array){ print }
+-> $array[0] $\ $array[1] $\ $array[2] $\
+
+while(<>){ print }
+-> $_ $\ $_ $\ $_ $\ $_ $\
+---------------------------------------------------------
+WHAT $, and $, DO VERBOSE
+
+OFS means the value of $,
+ORS means the value of $\
+
+print "text"  -> "text" ORS
+print $var    ->  $var  ORS
+
+print LIST     ->  elem1     OFS elem2     OFS elem3     ORS
+print @array   ->  $array[0] OFS $array[1] OFS $array[2] ORS
+
+print $var, "text", $var  ->  $var  OFS "text" OFS $var  ORS
+print $var1, $var2, $var3 ->  $var1 OFS $var2  OFS $var3 ORS
+
+print "@array" ->  $array[0] $" $array[1] $" $array[2] ORS
+print "@array[1,2]" ->          $array[1] $" $array[2] ORS
+
+
+foreach(@array){ print }
+-> $array[0] ORS $array[1] ORS $array[2] ORS
+
+while(<>){ print }
+-> $_ ORS $_ ORS $_ ORS $_ ORS
+
+------------------------------------------------------
+PRINTING AN ARRAY (or a LIST) one element by line:
+
+perl -e '$,="\n";  @array=(1,2,3); print @array,"\n"'
+perl -le '$,="\n"; @array=(1,2,3); print @array'
+
+perl -e '$,="\n"; $\="\n"; @array=(1,2,3); print @array'
+
+----------------------------------------------------
+chomp
+
+qss perl pat pattern
+qg perl | grep pattern
+
+london@archlinux:~ $ cat wd1
+2
+4
+3
+london@archlinux:~ $
+
+cat wd1 | perl -e '@pattern=(2);foreach(@pattern){print;$pat="$_"; push @lines, grep {/$pat/} <ARGV>}; foreach(@lines){substr($_,0,0,"test: ")} print @lines,""' wd
+
+cat wd1 | perl -e '@pattern=<STDIN>;foreach(@pattern){print;$pat="$_"; push @lines, grep {/$pat/} <ARGV>}; foreach(@lines){substr($_,0,0,"test: ")} print @lines,""' wd
+
+cat wd1 |perl -e '@pattern=<STDIN>;open($FH,"<",$ARGV[0]);foreach(@pattern){chomp;$pat=$_; while($line=<$FH>){if($line =~ /$pat/){ print $line } } ; seek($FH,0,0)};close($FH)' wd
+
+echo 2 | perl -e 'while(<STDIN>){$pattern=$_;push @lines, grep {/$pattern/} <ARGV>}; foreach(@lines){substr($_,0,0,"test: ")} print @lines,""' wd
+
+perl -e '$pattern="2" ;push @lines, grep {/$pattern/} <ARGV>; foreach(@lines){substr($_,0,0,"test: ")} print @lines,""' wd
+
+
+
+
+###############################################################################################3
+cd ~/pscripts
+find | grep "\.pl$" | perl -e 'foreach $F(<>){print}'
+find | grep "\.pl$" | perl -le 'foreach (<>){print}'
+
+find | grep "\.pl$" | perl -e 'foreach $F(<>){@results=();open F;@results=grep {/uniq/} <F>; if(@results){ print "$_\n" ;print @results,"\n";print "-" x 50,"\n"}close F}'
+
+###############################################################################################3
+
+qss
+find | grep "\.pl$" | perl -e '@files=<>;foreach(@files){@results=();chomp;open fh,"<",$_;@results=grep {/uniq/} <fh>; if(@results){ print "$_\n" ;print @results,"\n";print "-" x 50,"\n"}close fh}'
+qq
+cd /home/london/perl/scripts
+qq
+cd /home/london/.my_configurations/scripts/perl
+find | grep "\.pl$" | perl -e '@files=<>;foreach(@files){@results=();chomp;open fh,"<",$_;@results=grep {/uniq/} <fh>; if(@results){ print "$_\n" ;print @results,"\n";print "-" x 50,"\n"}close fh}'
+qp
+qq
+cd /home/london/Desktop/cheat
+find | grep "\.pl$" | perl -e '@files=<>;foreach(@files){@results=();chomp;open fh,"<",$_;@results=grep {/uniq/} <fh>; if(@results){ print "$_\n" ;print @results,"\n";print "-" x 50,"\n"}close fh}'
+find | grep "\.pl$" | perl -e 'chomp(@files=<>);foreach(@files){@results=();open fh,"<",$_;@results=grep {/uniq/} <fh>; if(@results){ print "$_\n" ;print @results,"\n";print "-" x 50,"\n"}close fh}'
+find | grep "\.pl$" | perl -e 'chomp(@files=<>);while($F=shift @files){@results=();open F;@results=grep {/uniq/} <F>; if(@results){ print "$_\n" ;print @results,"\n";print "-" x 50,"\n"}close F}'
+find | grep "\.pl$" | perl -e 'chomp(@files=<>);while($F=shift @files){@results=();open F;@results=grep {/uniq/} <$F>; if(@results){ print "$_\n" ;print @results,"\n";print "-" x 50,"\n"}close F}'
+find | grep "\.pl$" | perl -e 'chomp(@files=<>);while($F=shift @files){@results=();open F;@results=grep {/uniq/} <F>; if(@results){ print "$_\n" ;print @results,"\n";print "-" x 50,"\n"}close F}'
+q
+find | grep "\.pl$" | perl -e 'chomp(@files=<>);foreach(@files){@results=();open fh,"<",$_;@results=grep {/uniq/} <fh>; if(@results){ print "$_\n" ;print @results,"\n";print "-" x 50,"\n"}close fh}'
+q
+find | grep "\.pl$" | perl -e '@files=<>;foreach(@files){@results=();chomp;open fh,"<",$_;@results=grep {/uniq/} <fh>; if(@results){ print "$_\n" ;print @results,"\n";print "-" x 50,"\n"}close fh}'
+q
+find | grep "\.pl$" | perl -e '@files=<>;foreach(@files){@results=();chomp;open fh,"<",$_;@results=grep {/uniq/} <fh>; if(@results){ print "$_\n" ;print @results,"\n";print "-" x 50,"\n"}close fh}'
+find | grep "\.pl$" | perl -e 'chomp(@files=<>);foreach(@files){@results=();open fh,"<",$_;@results=grep {/uniq/} <fh>; if(@results){ print "$_\n" ;print @results,"\n";print "-" x 50,"\n"}close fh}'
+find | grep "\.pl$" | perl -e 'chomp(@files=<>);while($F=shift @files){@results=();open F;@results=grep {/uniq/} <F>; if(@results){ print "$_\n" ;print @results,"\n";print "-" x 50,"\n"}close F}'
+find | grep "\.pl$" | perl -e '@files=<>;foreach(@files){@results=();chomp;open fh,"<",$_;@results=grep {/uniq/} <fh>; if(@results){ print "$_\n" ;print @results,"\n";print "-" x 50,"\n"}close fh}'
+find | grep "\.pl$" | perl -e 'chomp(@files=<>);foreach(@files){@results=();open fh,"<",$_;@results=grep {/uniq/} <fh>; if(@results){ print "$_\n" ;print @results,"\n";print "-" x 50,"\n"}close fh}'
+find | grep "\.pl$" | perl -e 'while($F=<>){@results=();open F;@results=grep {/uniq/} <F>; if(@results){ print "$_\n" ;print @results,"\n";print "-" x 50,"\n"}close F}'
+q
+find | grep "\.pl$" | perl -e 'foreach $F(<>){@results=();open F;@results=grep {/uniq/} <F>; if(@results){ print "$_\n" ;print @results,"\n";print "-" x 50,"\n"}close F}'
+q
+find | grep "\.pl$" | perl -e 'foreach $F(<>){print}'
+find | grep "\.pl$" | perl -e 'foreach (<>){print}'
+find | grep "\.pl$" | perl -le 'foreach (<>){print}'
+find | grep "\.pl$" | perl -e 'foreach (<>){print}'
+qss
+cd pscripts
+ls
+###############################################################################################3
+------------------------
+
+-E say
+print
+printf
+-l
+
+$/ undef
+
+<FILEHANDLE> LIST  --> returns the list of all lines
+            SCALAR --> returns the next line
+
+WHAT IS A LINE ?
+
+A file is nothing else that one long string of characters.
+Classically, lines are separated by the newline \n character.
+In Perl, a line is delimited by $/, which is set to \n by default.
+This means that a line is a string including all characters up to the value of $/,
+and includes $/. In other terms, the long string that make the file is cut
+just after the value of $/, but $/ itself is not cut and is what terminates the each lines,
+except maybe the last line which may or may not have one, depending on the file.
+
+to set $/ to undef means that no character is considered a line delimiter,
+which means that the whole file is only one line.
+
+so to read a line is to read the whole file.
+
+thus, after doing this:
+$/=undef; $file=<>; 
+the whole file is contained in just one string stored in $file
+
+this is handy to do multiline matching.
+
+in these conditions grep is useless because if returns each line that match,
+which is the whole file here.
+
+there is a way to "grep horizontally" with the m// operator
+
+@matches = $file =~ m/pattern/
+@matches = $file =~ m/pattern/g
+@matches = $file =~ m/(pattern)/
+@matches = $file =~ m/(pattern)/g
+@matches = $file =~ m/(pat1) (pat2) (pat3)/
+@matches = $file =~ m/(pat1) (pat2) (pat3)/g
+
+print "one two three four" =~ m/(\S+)\s+(\S+)/   # onetwo
+print "one two three four" =~ m/(\S+)\s+(\S+)/g  # onetwothreefour
+
+
+m// SCALAR --> returns true or false
+
+LIST
+
+
+
+
+printf "%12s", "text"    # text on the right
+printf "%-12s", "text"   # text on the left
+
+no ORS for printf
+
+
+
+################################
+#   INTERPOLATION and QUOTES   #
+################################
+
+$scalar="some string"
+@array=(1,2,3,4,5)
+
+"$scalar"		# some string
+"@array"		# 12345
+
+$ and @ have to be escaped
+
+"\$scalar"		# $scalar
+"\@array"		# @array
+
+no interpolation for "%hash"
+
+perl -e 'program'  '\''
+perl -e "program"  \$
+
+
+####################
+#    SCALARS       #
+####################
+
+------------------------------------
+FUNCTIONS FOR SCALARS OR STRINGS
+chomp
+chop
+q
+qq
+sprintf
+
+# characters:
+ord
+chr
+
+# numbers:
+hex
+oct
+
+# stings manipulation:
+length
+index
+reverse
+rindex
+substr
+tr
+y
+
+lc
+lcfirst
+uc
+ucfirst
+fc
+
+pack
+
+crypt
+
+------------------------------------
+
+REGULAR EXPRESSIONS AND PATTERN MATCHING
+m
+s
+split
+
+qr
+pos
+quotemeta
+study
+
+------------------------------------
+NUMERIC FUNCTIONS
+# trigonometry:
+cos
+sin
+atan2
+
+exp
+log
+
+sqrt
+int
+abs
+
+hex
+oct
+
+rand
+srand
+------------------------------------
+
+
+
+
+####################
+#      ARRAYS      #
+####################
+
+the functions you can apply to arrays is not limited to the function bellow
+every function that takes a LIST as argument can take an array,
+because arrays return a list in list context
+so grep, map, sort, join, reverse also applies to arrays
+
+
+VOID ?
+
+each ARRAY        LIST  --> returns the next ($index, $value) 2 element list
+                 SCALAR --> returns the next $index
+
+pop ARRAY         VOID  --> removes the last element of ARRAY
+                 SCALAR --> removes the last element of ARRAY and returns it
+                  LIST  --> removes the last element of ARRAY and returns it
+pop   (ARRAY ommited)   --> same thing but acts on @ARGV or on @_ in a subroutine
+
+push ARRAY,LIST   VOID  --> add the elements of LIST to the end of ARRAY
+                 SCALAR --> same thing and returns the final size of ARRAY
+                  LIST  --> same thing and returns the final size of ARRAY
+
+shift ARRAY       VOID  -->
+                  LIST  -->
+                 SCALAR -->
+shift  (ARRAY ommited)  --> same thing but acts on @ARGV or on @_ inside a subroutine
+
+unshift ARRAY,LIST    LIST  -->
+                     SCALAR -->
+
+splice ARRAY,OFFSET,LENGTH,LIST     VOID  -->
+splice ARRAY,OFFSET,LENGTH          LIST  -->
+splice ARRAY,OFFSET                SCALAR -->
+splice ARRAY
+
+keys ARRAY        LIST  --> returns the list of indexes of the ARRAY
+                 SCALAR --> returns number of elements of ARRAY
+
+values ARRAY          LIST  -->
+                     SCALAR -->
+
+ITERATING OVER AN ARRAY
+
+foreach(@array) { s/line/LINE/; print }
+foreach $var (@array) { $var =~ s/line/LINE/; print $var }
+for     $var (@array) { $var =~ s/line/LINE/; print $var }
+
+@array=<>             or <ARGV> or <STDIN>
+@array=grep //, <>
+
+while ($arg = shift @ARGV) {}
+
+####################
+#      HASHES      #
+####################
+
+VOID ?
+
+keys HASH      LIST  --> returns a list of all the keys
+              SCALAR --> returns the number of keys
+
+values HASH    LIST  --> returns a list of all the values
+              SCALAR --> returns the number of values
+
+delete EXPR    LIST  --> returns
+              SCALAR --> returns
+
+each HASH      LIST  --> returns a 2 element list ($key, $value)
+              SCALAR --> returns
+
+exists EXPR    LIST  -->
+              SCALAR -->
+
+------------------------------------------------------------
+           %hash=(foo=>one, bar=>two, baz=>three)
+------------------------------------------------------------
+KEYS
+print keys %hash   # onetwothree  (not necessarily in that order)
+
+foreach     (keys %hash){ print "$_    $hash{$_}"   }
+foreach $key(keys %hash){ print "$key  $hash{$key}" }
+------------------------------------------------------------
+VALUES
+print values %hash # foobarbaz   (not necessarily in that order)
+
+------------------------------------------------------------
+EACH
+
+while( ($key,$value)=each %hash){
+	print "$key  $value"
+}
+------------------------------------------------------------
+EXISTS
+
+print "Exists" if exists $hash{foo}
+------------------------------------------------------------
+DELETE
+
+# SIMPLE DELETE
+delete $hash{foo}        # delete 1 key/value pair
+delete @hash{foo, bar}   # delete 2 key/value pairs
+delete @hash{keys %hash} # delete all key/values pairs
+
+------------------------------------------------------------
+# DELETE AND STORE THE VALUES OF THE KEY/VALUE PAIRS DELETED
+$value = delete $hash{foo}       # $value = "one"
+@values = delete @hash{foo, bar} # @values = ("one", "two")
+
+------------------------------------------------------------
+# DELETE AND STORE THE KEY/VALUE PAIRS DELETED
+%deleted = delete %hash{foo}        # %deleted=(foo=>one)
+%deleted = delete %hash{foo, baz}   # %deleted=(foo=>one,bar=>two)
+%deleted = delete %hash{keys %hash} # %deleted=(foo=>one,bar=>two,baz=>three)
+
+------------------------------------------------------------
+
+
+
+####################
+#       LISTS      #
+####################
+VOID ?
+
+grep           LIST  -->
+              SCALAR -->
+
+join           LIST  -->
+              SCALAR -->
+
+map            LIST  -->
+              SCALAR -->
+perl -e 'print map {s|<a href="(.*?)">(.*?)</a>.*?<td>(.*?)</td>.*|"$1" "$2" "$3"\n|r} grep {/<a href=/} map {split /(?=<a href=)/} grep {/<td>/} <>' "/home/london/perl/perl6/raku_html/Raku Language Documentation.html"
+
+
+qw             LIST  -->
+              SCALAR -->
+
+reverse        LIST  -->
+              SCALAR -->
+
+sort           LIST  -->
+              SCALAR -->
+
+unpack         LIST  -->
+              SCALAR -->
+
+my @numbers = qw(1 2 3 4 5 6 7 8 9 10 11 12);
+my @squares = map { $_ * $_ }  grep { $_ > 5 }  @numbers;
+
+
+####################
+#    VARIABLES     #
+####################
+
+awk-like processing
+sed-like processing
+
+sed -n            '/pattern1/,/pattern2/p'
+awk               '/pattern1/,/pattern2/'
+perl -ne 'print if /pattern1/../pattern2/'
+
+sed -n '5,12p'
+awk 'NR>=5 && NR<=12'
+perl -ne 'print if $.>=5 && $.<=12'
+perl -ne 'print if $.>=5 and $.<=12'
+
+
+
+####################
+#    OPERATORS     #
+####################
+
+
+
+$.  --> work only on filehandles ??
+
+=~
+
+m//
+s///
+qr//
+
+--------------------------
+Terms and List Operators (Leftward)
+-variables, quote and quote-like operators, any expression in parentheses, and any function whose arguments are parenthesized
+------------------------
+->  \
+------------------------
+=~
+
+$string="text";
+$string =~ /^t/ # true
+$string =~ m/^t/ # true
+
+
+left side -> what is supposed to be searched, substituted, or transliterated instead of the default $_
+right side -> search pattern, substitution, or transliteration
+
+m//
+s///
+tr/// y/// (synonyms)
+
+for s///, tr/// and  y///
+
+if the r modifier is used, it returns the result of the substitution or transliteration
+
+$string = "awk";
+$result = $string =~ s/awk/perl/r
+# $result = "perl" and $string is unchanged
+
+
+
+------------------------
+& (bitwise and)  | (bitwise or)  ^ (bitwise xor)  ~ (bitwise not)
+<< (leftshift)  >> (rightshift)
+------------------------
+named unary operators --> functions that takes only one argument
+------------------------
+** * /  +  -  ++ --
+<  >  <=  >= ==  !=
+------------------------
+x  .
+lt  gt  le  ge  eq  ne
+------------------------
+<=>  cmp  ~~
+------------------------
+isa
+-----------------------
+&& || !
+and or not
+------------------------
+//
+.. range operator
+(? :)  conditional / ternary operator
+= assignment operator
+, comma operator
+List Operators (Rightward)  --> functions that takes more than one arguments
+------------------------
+Regexp Quote-Like Operators
+qr//
+m//
+m??
+s///
+~~
+------------------------
+Quote-Like Operators
+q//     ''
+qq//    ""
+qx//    ``
+qw//
+tr// y//
+<<EOF
+------------------------
+---------------------------------------------
+
+Quote and Quote-like Operators
+       While we usually think of quotes as literal values, in Perl they function as operators, providing various
+       kinds of interpolating and pattern matching capabilities.  Perl provides customary quote characters for
+       these behaviors, but also provides a way for you to choose your quote character for any of them.  In the
+       following table, a "{}" represents any pair of delimiters you choose.
+
+           Customary  Generic        Meaning        Interpolates
+               ''       q{}          Literal             no
+               ""      qq{}          Literal             yes
+               ``      qx{}          Command             yes*
+                       qw{}         Word list            no
+               //       m{}       Pattern match          yes*
+                       qr{}          Pattern             yes*
+                        s{}{}      Substitution          yes*
+                       tr{}{}    Transliteration         no (but see below)
+                        y{}{}    Transliteration         no (but see below)
+               <<EOF                 here-doc            yes*
+
+               * unless the delimiter is ''.
+
+-------
+
+.. flip flop / range operator
+
+, comma operator / list separator
+
+= scalar assignment / list assignment
+
+
+q
+qq
+qw
+qr
+qx
+
+
+###########################
+#   OPERATORS PRECEDENCE  #
+###########################
+
+Perl operators have the following associativity and precedence, listed from
+highest precedence to lowest.  Operators borrowed from C keep the same
+precedence relationship with each other, even where C's precedence is
+slightly screwy.  (This makes learning Perl easier for C folks.)  With very
+few exceptions, these all operate on scalar values only, not array values.
+
+    left        terms and list operators (leftward)
+    left        ->
+    nonassoc    ++ --
+    right       **
+    right       ! ~ \ and unary + and -
+    left        =~ !~
+    left        * / % x
+    left        + - .
+    left        << >>
+    nonassoc    named unary operators
+    chained     < > <= >= lt gt le ge
+    chain/na    == != eq ne <=> cmp ~~
+    nonassoc    isa
+    left        &
+    left        | ^
+    left        &&
+    left        || //
+    nonassoc    ..  ...
+    right       ?:
+    right       = += -= *= etc. goto last next redo dump
+    left        , =>
+    nonassoc    list operators (rightward)
+    right       not
+    left        and
+    left        or xor
+
+
+####################
+#       SORT       #
+####################
+
+sort SUBNAME LIST
+sort BLOCK LIST
+sort LIST
+
+there is a lot of sorting algorithms,
+but in the end, 2 values have to be compared,
+and that's what we have control on, in the BLOCK
+--------------------------------------------------------------------
+sort LIST
+sort @array                # lexical sort
+--------------------------------------------------------------------
+sort BLOCK LIST
+sort { $a cmp $b } LIST    # lexical sort, ascending
+sort { $b cmp $a } LIST    # lexical sort, descending
+
+$a cmp $b returns:
+-1 if  $a  lt  $b
+0  if  $a  eq  $b
+1  if  $a  gt  $b
+
+$a <=> $b returns:
+-1 if  $a <  $b
+0  if  $a == $b
+1  if  $a >  $b
+
+sort { $a <=> $b } LIST    # numerical sort, ascending
+sort { $b <=> $a } LIST    # numerical sort, descending
+
+sort files by size
+print sort {(split /\s+/, $a)[4] <=> (split /\s+/, $b)[4]} `ls -l`
+
+--------------------------------------------------------------------
+sort SUBNAME LIST
+sub by_size {(split /\s+/, $a)[4] <=> (split /\s+/, $b)[4]}
+print sort by_size `ls -l`
+
+####################
+#    VARI     #
+####################
+
+
+####################
+#     QUOTING      #
+####################
+
+q           equivalent to single quotes, no interpolation
+qq          equivalent to double quotes, interpolation
+qx          equivalent to backticks
+qr          
+qw          quotewords
+quotemeta   equivalent to \Q ... \E
+
+
+how to introduce single quotes inside the program's single quotes ?
+perl -e 'program'
+
+replace each single quote character by '\''
+example:
+
+perl -le '$var='\''text'\''; print $var'
+perl -le '$var="text with '\''single quotes'\''"; print $var'
+perl -le '$var="text with '\''single quotes'\''"; print $var=~s/'\''/"/gr'
+
+
+####################
+#    REFERENCES    #
+####################
+
+use feature 'refaliasing'
+no warnings 'experimental::refaliasing'
+
+MAKING REFERENCES
+
+==Make Rule 1
+    If you put a "\" in front of a variable, you get a reference to
+    that variable.
+
+$sref = \$scalar
+$aref = \@array
+$href = \%hash
+
+==Make Rule 2
+
+[...]  makes a new, anonymous array, and returns a reference to that array
+{...}  makes a new, anonymous hash, and returns a reference to that hash
+
+$aref = [1,2,3,4,5]
+$href = {"one" => 1, "two" => 2}
+
+DEREFERENCING
+
+==Rule 1
+You can always use an array reference, in curly braces, in place
+of the name of an array.  For example, "@{$aref}" instead of @array.
+
+
+${$sref}       # scalar value
+
+$#{$aref}      # index of last element
+
+@{$aref}       # whole array
+${$aref}[1]    # one element
+$aref->[1]     # same thing with the arrow notation
+@{$aref}[1..4] # array slice
+%{$aref}[1..4] # array slice with indexes
+
+%{$href}            # all key/value pairs
+${$href}{one}       # one value
+$href->{one}        # same thing with the arrow notation
+@{$href}{one,two}   # hash slice
+%{$href}{one,two}   # hash slice with keys
+
+POSTFIX DEREFERENCING
+$sref->$*
+
+$aref->$#*        # index of last element
+
+$aref->@*         # all elements
+$aref->[1]        # single value
+$aref->@[1]       # single value
+$aref->@[1,2,3]   # array slice
+$aref->%[1,2,3]   # array slice with indexes
+
+$href->%*           # all key/value pairs
+$href->{one}        # single value
+$href->@{one}       # single value ?
+$href->@{one,two}   # hash slice
+$href->%{one,two}   # hash slice with keys
+
+AUTOVIVIFICATION
+
+########################
+#    DATA STRUCTURES   #
+########################
+
+ARRAYS of ARRAYS
+
+
+
+
+---------------------------------
+HASHES of HASHES
+
+---------------------------------
+ARRAYS of HASHES
+
+
+---------------------------------
+HASHES of ARRAYS
+
+
+####################
+#    FILEHANDLES   #
+####################
+
+2> /dev/null is equivalent to close STDERR;
+
+perl -e '$file="$ENV{HOME}/.bashrc"; system "st", "-e", "vim", $file if defined $file;'
+couldn't read from shell: Input/output error
+
+perl -e '$file="$ENV{HOME}/.bashrc"; system "st", "-e", "vim", $file if defined $file;' 2> /dev/null
+perl -e 'close STDERR; $file="$ENV{HOME}/.bashrc"; system "st", "-e", "vim", $file if defined $file;'
+
+
+SEE https://www.perl.com/article/182/2015/7/15/Stupid-open-tricks/
+
+
+<>  <ARGV> or <STDIN>
+
+if there is something to be read in stdin and at leat one file is passed as argument, then stdin is discarded and <> behaves as if it were only <ARGV>
+
+--------------------------------------------------
+open "FH", "<", "path/to/file"  # bareword filehandle
+close FH
+--------------------------------------------------
+open "$FH", "<", "path/to/file"  # ??
+close $FH
+--------------------------------------------------
+open "$FH", "<", "path/to/file"   # ??
+open "$FH", "<", "path/to/file"   # ??
+open "$FH", ">", "path/to/file"   # CLOBBER
+open "$FH", ">>", "path/to/file"  # ??
+open "$FH", "+<", "path/to/file"  # ??
+open "$FH", "+>", "path/to/file"  # CLOBBER
+--------------------------------------------------
+open "FH", "+<", \$scalar # in-memory file
+--------------------------------------------------
+
+open FH, "-|", "ls"
+open FH, "|-", "grep"
+
+
+2 ARGUMENTS OPEN
+open "FH", "< path/to/file"
+
+these 2?
+open "FH", "ls |"
+open "FH", "| grep"
+----------------------------------
+print <$FH>
+@file=<$FH>
+$,=undef; $file=<$FH>
+
+foreach (<>)
+while(<>)
+
+print $FH "something"
+print <$FH>
+@file=<$FH>
+$/=undef; $file=<$FH>
+
+$ARGV
+$.
+
+seek $FH, 0, 0;  # go to begining of the file
+
+
+
+
+------------------------------------------------------------
+
+Create an anonymous temporary file
+If I give open a filename of an explicit undef and the read-write mode (+> or +<), Perl opens an anonymous temporary file:
+
+open my $fh, '+>', undef;
+
+
+------------------------------------------------------------
+Create an anonymous temporary file
+If I give open a filename of an explicit undef and the read-write mode (+> or +<), Perl opens an anonymous temporary file:
+
+open my $fh, '+>', undef;
+
+
+------------------------------------------------------------
+Read lines from a string
+I can also read from a scalar variable by opening a filehandle on it.
+
+open my $fh, '<', \ $string;
+Now I can play with the string line-by-line without messing around with regex anchors or line endings:
+
+while( <$fh> ) { ... }
+I write about these sorts of filehandle-on-string tricks in Effective Perl Programming.
+
+------------------------------------------------------------
+
+Make a pipeline
+Most Unix programmers probably already know that they can read the output from a command as the input for another command. I can do that with Perl’s open too:
+
+use v5.10;
+
+open my $pipe, '-|', 'date';
+while( <$pipe> ) {
+  say "$_";
+  }
+This reads the output of the date system command and prints it. But, I can have more than one command in that pipeline. I have to abandon the three-argument form which purposely prevents this nonsense:
+
+open my $pipe, qq(cat '$0' | sort |);
+while( <$pipe> ) {
+  print "$.: $_";
+  }
+This captures the text of the current program, sorts each line alphabetically and prints the output with numbered lines. I might get a Useless Use of cat Award for that program that sorts the lines of the program, but it’s still a feature.
+
+
+
+------------------------------------------------------------
+------------------------------------------------------------
+------------------------------------------------------------
+------------------------------------------------------------
+------------------------------------------------------------
+------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+####################
+#    VARIABLES     #
+####################
+
+####################
+#    VARIABLES     #
+####################
+####################
+#    VARIABLES     #
+####################
+####################
+#    VARIABLES     #
+####################
+####################
+#    VARIABLES     #
+####################
+
+
+####################
+#    VARIABLES     #
+####################
+
+####################
+#    VARIABLES     #
+####################
+
+
+user input:
+
+$var = <STDIN>
+
+
+
+
+
+
+####################
+#    CLI SWITCHES  #
+####################
+
+
+-e -n -p -l -a -F -s -E -i -0 -00 -000 -0777
+
+-e  program
+
+perl -ne 'print'
+perl  -e 'while(<>){print}'
+perl  -e 'LINE:while(<>){print}'
+
+perl -pe ''
+perl  -e 'while(<>){} contiue {print}'
+perl  -e 'LINE:while(<>){} contiue {print}'
+
+LINE is a label that can be used as argument of next
+next LINE starts the next iteration
+
+
+-n   causes Perl to assume the following loop around your program,
+            which makes it iterate over filename arguments somewhat like sed
+            -n or awk:
+
+              LINE:
+                while (<>) {
+                    ...             # your program goes here
+                }
+
+-p  causes Perl to assume the following loop around your program,
+            which makes it iterate over filename arguments somewhat like sed:
+
+              LINE:
+                while (<>) {
+                    ...             # your program goes here
+                } continue {
+                    print or die "-p destination: $!\n";
+                }
+FALSE
+-l   add a "\n" at the end of each line if there isn't one already
+
+
+-l chomp $/ and then add $\
+
+doesn't work on printf
+
+
+-a   turns on autosplit mode when used with a -n or -p.  An implicit
+            split command to the @F array is done as the first thing inside
+            the implicit while loop produced by the -n or -p.
+
+                perl -ane 'print pop(@F), "\n";'
+
+            is equivalent to
+
+                while (<>) {
+                    @F = split(' ');
+                    print pop(@F), "\n";
+                }
+
+            An alternate delimiter may be specified using -F.
+
+            -a implicitly sets -n.
+
+
+-Fpattern
+            specifies the pattern to split on for -a. The pattern may be
+            surrounded by "//", "", or '', otherwise it will be put in single
+            quotes. You can't use literal whitespace or NUL characters in the
+            pattern.
+
+            -F implicitly sets both -a and -n.
+-0
+-00
+$/=undef
+
+
+
+-e -n -p -l -a -F -s -E -i -0 -00 -000 -0777
+
+
+
+exctraction
+perl -pe '($_)=m/before(pattern)after/'
+
+$/=undef; print m//;
+$/=undef; print $var =~ m//;
+
+$/=undef; @matches = $var =~ m//; print @matches
+$/=undef; $count = @matches = $var =~ m//; print $count
+$/=undef; $count = () = $var =~ m//; print $count
+
+
+###############################
+#   NUMBER BASES CONVERSIONS  #
+###############################
+
+DECIMAL TO HEXADECIMAL
+perl -e 'printf "%X\n", $ARGV[0]' 255  # FF
+perl -e 'printf "%x\n", $ARGV[0]' 255  # ff
+
+DECIMAL TO OCTAL
+perl -e 'printf "%o\n", $ARGV[0]' 16   # 20
+
+DECIMAL TO BINARY
+perl -e 'printf "%b\n", $ARGV[0]' 4    # 100
+-----------------------------
+HEXADECIAML TO DECIMAL
+perl -le 'print hex $ARGV[0]' ff       # 255
+perl -le 'print oct "0x".$ARGV[0]' ff  # 255
+
+HEXADECIMAL TO OCTAL
+perl -e 'printf "%o\n", hex $ARGV[0]' 10 # 20
+
+HEXADECIMAL TO BINARY
+perl -e 'printf "%b\n", hex $ARGV[0]' f  # 1111
+
+-----------------------------
+OCTAL TO DECIMAL
+perl -le 'print oct $ARGV[0]' 20       # 16
+
+OCTAL TO HEXADECIMAL
+perl -e 'printf "%X\n", oct $ARGV[0]' 20 # 10
+perl -e 'printf "%x\n", oct $ARGV[0]' 20 # 10
+
+OCTAL TO BINARY
+perl -e 'printf "%b\n", oct $ARGV[0]' 20 # 10000
+-----------------------------
+BINARY TO DECIMAL
+perl -le 'print oct "0b".$ARGV[0]' 100 # 4
+
+BINARY TO OCTAL
+perl -e 'printf "%o\n", oct "0b".$ARGV[0]' 10000 # 20
+
+BINARY TO HEXADECIMAL
+perl -e 'printf "%X\n", oct "0b".$ARGV[0]' 1111  # F
+perl -e 'printf "%x\n", oct "0b".$ARGV[0]' 1111  # f
+
+#######################################################
+
+UNICODE
+how to convert utf-8 to utf-16 character encoding
+
+
+###################################################
+
+eval do
+
+
+"$" --> "\$" last dollar should be quoted because of the special variable $" ??
+
+perldoc script.pl
+
+
+#####################
+#       LEXER       #
+#####################
+
+UNDERSTANDING \G (works with the /g mododifier) (and only and the start of the regex)
+
+perl -le '$str="abc123def456"; $str=~/\G([a-z]+|\d+)/g; print "true" if $str =~ /\G([a-z]+|\d+)/g'
+
+first  match equivalent "abc123def456" =~ m/^([a-z]+|\d+)/g     # TRUE   $1=abc
+second match equivalent "abc123def456" =~ m/^abc([a-z]+|\d+)/g  # TRUE   $1=123
+
+perl -le '$str="abc 123 def 456"; $str=~/\G([a-z]+|\d+)/g; print "true" if $str =~ /\G([a-z]+|\d+)/g'
+
+first  match equivalent "abc 123 def 456" =~ m/^([a-z]+|\d+)/g     # TRUE   $1=abc
+second match equivalent "abc 123 def 456" =~ m/^abc([a-z]+|\d+)/g  # FALSE because of the space after abc in the string
+
+----------------------------------------------------------------------------------------
+g global
+s single
+c keep pos() even if match fail
+pos()  ==> analog to file position for a file handle ?
+
+
+@matches=($string =~ m/pattern/g)   # match in LIST CONTEXT
+# this does the same :
+while ($string =~ m/(pattern)/g) {push @matches, $1} # match in SCALAR CONTEXT
+
+$/=undef;
+$program=$ARGV[0];
+$end=0;
+while (not $end){
+	if($program =~ m/\G /gsc){ 1; }  # skip spaces
+	elsif($program =~ m/\G(\d+)/gsc){push @tokens, {type=>"number",   value=>$1} }
+ 
+	elsif($program =~ m/\G(\+)/gsc) {push @tokens, {type=>"plus",     value=>$1} }
+	elsif($program =~ m/\G(\-)/gsc) {push @tokens, {type=>"minus",    value=>$1} }
+	elsif($program =~ m/\G(\*)/gsc) {push @tokens, {type=>"multiply", value=>$1} }
+	elsif($program =~ m/\G(\/)/gsc) {push @tokens, {type=>"divide",   value=>$1} }
+
+	elsif($program =~ m/\G(\()/gsc) {push @tokens, {type=>"parenopen",    value=>$1} }
+	elsif($program =~ m/\G(\))/gsc) {push @tokens, {type=>"parenclose",   value=>$1} }
+
+	else {$end = 1}
+}
+$\="\n";
+print "$_->{type}\t$_->{value}" foreach @tokens;
+
+
+
+
+
+
+
+
+
+make a section on subroutines
+
+$arg1 = shift;
+$arg2 = shift;
+$arg3 = shift;
+
+($arg1, $arg2) = @_;
+
+@args = @_;
+
+%named_args = @_;   the subroutine was passed a HASH
+
+#####################
+#   DOCUMENTATION   #
+#####################
+perl-doc package Debian, Ubuntu ?
+Arch -> comes with the perl package
+
+perl       (overview)
+perlintro  (introduction)
+perltoc    (detailed table of contents of the entire perl-doc)
+perlrun    (command line flags and switches)
+
+perlfunc   (functions)
+perlvar    (special variables)
+perlsyn    (syntax)
+perlop     (operators)
+perldata   (data types)
+perlsub
+perlnumber
+
+perlpragma
+
+feature
+experimental
+perlexperiment
+
+feature
+warnings
+perldiag
+
+data structures
+perldata ?
+
+
+perlsecret
+
+perlglossary
+
+perldiag (error messages)
+
+data structures
+perldata ?
+perldsc
+perlref
+perlreftut
+perllol
+
+REGULAR EXPRESSIONS
+perlrequick	491				for a rapid tutorial.
+perlretut	2780			for a tutorial on regular expressions.
+perlre		2960			for more details.
+                      awesome sections -> "Backtracking" and "Combining RE Pieces"
+perlreref	364
+
+perlrecharclass	1083
+perlrebackslash	726
+
+re.3perl	396
+perlfaq6
+pcrepattern
+regex.7 / man re_format
+perlreguts
+
+
+perl.com
+perldoc.perl.org
+metacpan.org
+
+perlmonks.org
+perlmaven.com
+
+https://www.perl.com/article/182/2015/7/15/Stupid-open-tricks/
+
+########################################################################
+
+ARRAYS are manipulated as easily (even more with pu ) as strings
+
+substr EXPR,OFFSET,LENGTH,REPLACEMENT
+substr EXPR,OFFSET,LENGTH
+substr EXPR,OFFSET
+
+splice is like substr but for arrays
+splice ARRAY,OFFSET,LENGTH,LIST
+splice ARRAY,OFFSET,LENGTH
+splice ARRAY,OFFSET
+splice ARRAY
+
+split /PATTERN/,EXPR,LIMIT
+split /PATTERN/,EXPR
+split /PATTERN/
+split
+
+
+$scalars get interpolated in double quoted strings, and
+@arrays get also interpolated in double quoted strings.
+
+
+push --> $string   .= $pushedstring
+pop  --> $character = chop $string
+
+shift   --> $character = substr $string, 0, 1; $string = substr $string, 1;
+unshift --> $string = "insertion " . $string
+
+perl -le '$var="string"; print $var; while($var){$char=substr $var, 0, 1; $var=substr $var, 1; print "-"x10; print "$char\n$var"}'
+
+---------------------------------------------------------------------------------------------
+unshift --> substr $string
+perl -le '$var="string"; substr($var, 0, 0) = "insertion "; print $var'
+---------------------------------------------------------------------------------------------
+
+Perl allows you to choose your own quote delimiters. If you find you need to use a double quote inside of an interpolating string (i.e. "") or single quote inside of a non-interpolating string (i.e. '') you can use a quote operator to specify a different character to act as the delimiter for the string. Delimiters come in two forms: bracketed and unbracketed. Bracketed delimiters have different beginning and ending characters: [], {}, (), [], and <>. All other characters* are available as unbracketed delimiters.
+
+So your example could be written as
+
+$foo = qq(12."bar bar bar"|three);
+Inserting text after "12." can be done many ways (TIMTOWDI). A common solution is to use a substitution to match the text you want to replace.
+
+$foo =~ s/^(12[.])/$1../;
+the ^ means match at the start of the sting, the () means capture this text to the variable $1, the 12 just matches the string "12", and the [] mean match any one of the characters inside the brackets. The brackets are being used because . has special meaning in regexes in general, but not inside a character class (the []). Another option to the character class is to escape the special meaning of . with \, but many people find that to be uglier than the character class.
+
+$foo =~ s/^(12\.)/$1../;
+Another way to insert text into a string is to assign the value to a call to substr. This highlights one of Perl's fairly unique features: many of its functions can act as lvalues. That is they can be treated like variables.
+
+substr($foo, 3, 0) = "..";
+If you did not already know where "12." exists in the string you could use index to find where it starts, length to find out how long "12." is, and then use that information with substr.
+
+Here is a fully functional Perl script that contains the code above.
+
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+my $foo = my $bar = qq(12."bar bar bar"|three); 
+
+$foo =~ s/(12[.])/$1../;
+
+my $i = index($bar, "12.") + length "12.";
+substr($bar, $i, 0) = "..";
+
+print "foo is $foo\nbar is $bar\n";
+* all characters except whitespace characters (space, tab, carriage return, line feed, vertical tab, and formfeed) that is
+
+
+
+perl -le 'for (qw(AB C D B E F)){print if /A/ .. /B/}'
+AB
+
+perl -le 'for (qw(AB C D B E F)){print if /A/ ... /B/}'
+AB
+C
+D
+B
+
+
+
+while (shift @array) doesn't topicalize / set $_
+
+
+
+
+
+
+perl -le 'no warnings "once"; $var=10'
+
+PERLOP
+Gory details of parsing quoted constructs
+I/O Operators
+
+
+ordered hashes / associative arrays
+perl -MTie::IxHash -le 'tie %hash, "Tie::IxHash"; %hash=(one=>1, two=>2, three=>3); print %hash'
+
+perl -le '%hash=(one=>1, two=>2, three=>3); print %hash'
+
+
+
+-------------------------------------------------------------------------------------
+Capture::Tiny - Capture STDOUT and STDERR from Perl, XS or external programs
+Carp - alternative warn and die for modules
+Exporter - Implements default import method for modules
+Tie::File - Access the lines of a disk file via a Perl array
+Tie::IxHash - ordered associative arrays for Perl
+
+#################################################################
+
+
+perl -MList::MoreUtils=each_array -MTie::IxHash -le 'tie %keys, "Tie::IxHash", (one=> "two", three=>"four"); tie %values, "Tie::IxHash", (five=>"six", seven=>"eight"); @keys=keys %keys; @values=keys %values; $ea= each_array(@keys,@values); while( ($k,$v) = $ea->() ){ print "$k $v" }'
+
+
+
+
+PACKAGES, MODULES
+
+before, @INC contained "."
+
+now to doesn't
+
+use lib ".";
+
+
+@INC --> use, require
+
+
+
+
+perlfunc  --> use, no, require, do, eval, import
+perlvar   --> @INC, %INC
+perlpragma
+BEGIN END AUTOLOAD UNITCHECK CHECK INIT
+@EXPORT
+@EXPORT_OK
+@ISA
+
+perldata
+perlmod.1perl
+perlnewmod.1perl
+perlmodlib.1perl
+
+lib.3perl
+pragma.1perl
+Exporter.3perl
+Importer.3pm
+Carp.3perl
+UNIVERSAL.3perl
+
+
+
+lib - manipulate @INC at compile time
+Exporter - Implements default import method for modules
+Importer - Alternative but compatible interface to modules that export symbols
+Carp - alternative warn and die for modules
+UNIVERSAL - base class for ALL classes (blessed references)
+perlpragma  A pragma is a module which influences some aspect of the compile time or run time behaviour of Perl
+perlmodlib - constructing new Perl modules and finding existing ones
+
+
+PERLPRAGMA(1perl)
+       perlpragma - how to write a user pragma
+DESCRIPTION
+       A pragma is a module which influences some aspect of the compile
+       time or run time behaviour of Perl, such as "strict" or
+       "warnings". With Perl 5.10 you are no longer limited to the built
+       in pragmata; you can now create user pragmata that modify the
+       behaviour of user functions within a lexical scope.
+
+
+---------------------------------------------------------------
+use Module VERSION LIST
+use Module VERSION
+use Module LIST
+use Module
+use VERSION
+
+Imports some semantics into the current package from the named
+module, generally by aliasing certain subroutine or variable
+names into your package. It is exactly equivalent to
+
+    BEGIN { require Module; Module->import( LIST ); }
+
+except that Module *must* be a bareword. The importation can be
+made conditional by using the if module.
+---------------------------------------------------------------
+If you do not want to call the package's "import" method (for
+instance, to stop your namespace from being altered), explicitly
+supply the empty list:
+
+    use Module ();
+
+That is exactly equivalent to
+
+    BEGIN { require Module }
+
+---------------------------------------------------------------
+If the VERSION argument is present between Module and LIST, then
+the "use" will call the "VERSION" method in class Module with
+the given version as an argument:
+
+    use Module 12.34;
+
+is equivalent to:
+
+    BEGIN { require Module; Module->VERSION(12.34) }
+
+The default "VERSION" method, inherited from the "UNIVERSAL"
+class, croaks if the given version is larger than the value of
+the variable $Module::VERSION.
+
+---------------------------------------------------------------
+use lib LIST;	 is almost the same as saying
+BEGIN { unshift(@INC, LIST) }
+---------------------------------------------------------------
+
+
+eval --> do-FILE --> require --> use
+
+
+---------------------------------------------------------------
+Otherwise, "require" demands that a library file be included if
+it hasn't already been included. The file is included via the
+do-FILE mechanism, which is essentially just a variety of "eval"
+with the caveat that lexical variables in the invoking script
+will be invisible to the included code. If it were implemented
+in pure Perl, it would have semantics similar to the following:
+
+If EXPR is a bareword, "require" assumes a .pm extension and
+replaces "::" with "/" in the filename for you, to make it easy
+to load standard modules. This form of loading of modules does
+not risk altering your namespace, however it will autovivify the
+stash for the required module.
+
+In other words, if you try this:
+
+        require Foo::Bar;     # a splendid bareword
+
+The require function will actually look for the Foo/Bar.pm file
+in the directories specified in the @INC array, and it will
+autovivify the "Foo::Bar::" stash at compile time.
+
+
+
+"do './stat.pl'" is largely like
+
+    eval `cat stat.pl`;
+
+except that it's more concise, runs no external processes, and
+keeps track of the current filename for error messages. It also
+differs in that code evaluated with "do FILE" cannot see
+lexicals in the enclosing scope; "eval STRING" does. It's the
+same, however, in that it does reparse the file every time you
+call it, so you probably don't want to do this inside a loop.
+
+Using "do" with a relative path (except for ./ and ../), like
+
+    do 'foo/stat.pl';
+
+    @INC    The array @INC contains the list of places that the "do EXPR",
+            "require", or "use" constructs look for their library files.
+
+    %INC    The hash %INC contains entries for each filename included via
+            the "do", "require", or "use" operators
+
+
+############################################################################
+
+UNICODE CHARACTERS
+use utf8; / -Mutf8  -->  unicode characters in the script file
+-CI                 -->  unicode characters in STDIN
+-CO                 -->  unicode characters in STDOUT
+-CE                 -->  unicode characters in STDERR
+-CIOE
+-CS same as -CIOE
+-CA                 --> unicode characters in @ARGV
+
+alternative to set encoding of STDIN, STDOUT or STERR to utf8
+binmode STDOUT, ":utf8";
+
+reading a file containing unicode characters
+open FH, "<:utf8", $file_path;
+
+writing unicode characters to a file
+open FH, ">>:utf8", $file_path;
+
+
+
+perl -le 'print ((grep {/\.mkv$/} `ls`)[-1])'
+
+
+perl -le '$text=" .?+*()[]{}~!@#\$%^&*_`-=\\|;:'\''\",<>/"; print quotemeta $text'
+\ \.\?\+\*\(\)\[\]\{\}\~\!\@\#\$\%\^\&\*_\`\-\=\\\|\;\:\'\"\,\<\>\/
+
+
+perl -MO=Deparse -e 1
+perl -MO=Deparse -n -e 1
+perl -MO=Deparse -p -e 1
+perl -MO=Deparse -ln -e 1
+perl -MO=Deparse -lp -e 1
+perl -MO=Deparse -l -e 1
+
+
+
+OBJECT ORIENTATION
+
+
+package MYCLASS;
+
+sub new {
+	my $class = shift;
+	my $self = bless, {}, $class;
+	return $self;
+}
+
+sub method {
+	my $self = shift;
+	# do some stuff
+}
+
+package main;
+
+my $obj = MYCLASS->new;		# implicit argument is the CLASS
+$obj->method();				# implicit argument is the object / blessed hash reference
+
+
+constructor implicitly receive the name of the class
+methods  implicity receive a reference to the object
+
+
+
+
+PASSING A BLOCK OF CODE / same as passing an anonymous subroutine but with better syntax ?
+
+
+sub try (&;@) {
+  my ( $try, @code_refs ) = @_;
+  ...
+}
+
+sub repeat(&@)
+{
+   my $code = shift;
+   my %args = @_;
+	...
+}
+
+my %items = ... ;
+
+my $f = repeat {
+	my ($k) = @_;
+	HTTP_PUT("http://example.com/$k", $items{$k})
+} foreach => [ keys %items ]
+
+
+
+
+
+
+regex metacharacters --> \ backslash or [] character class
+
+
+
+
+
+
+CLOSURE --> kind of like an object with only one method
+
+
+
+
+
+difference between
+print;        --> same as print $_;   -->   $_ . $OUTPUT_RECORD_SEPARATOR
+print "";                             -->   "" . $OUTPUT_RECORD_SEPARATOR
+
+
+
+
+
+
+EXCEPTION HANDLING
+
+my $ok = eval {					# use eval because there might be an error
+	$file->stream_to($socket);	# start streaming some file to a socket
+	1;							# because eval is weird in Perl, you stick a 1 at the end
+};								#  so you can test wether or not you get a true value out of eval
+
+unless ($ok) {					# if it wasn't ok,
+	my $error = $@;				# then you get the error
+	warn "Stream failed: $error";	# and print a message to stderr
+	return -1;					# return some sentinel value saying this whole subroutine was a failure
+}
+
+why did you have to put that 1 there ?
+-> because eval is not really try, eval is this other thing
+
+why do you have to copy $@ ?
+-> because $@ is a global variable and if you do some other subroutine that changes it,
+->  you're going to lose the current exception you've captured
+
+
+try {
+	$file->stream_to($socket);
+	return 0;
+}
+catch($error) {
+	$Logger->log("Stream failed: $error");
+	return -1;
+} (no ;)
+
+-------------------------
+special variables
+$@
+$!
+$^E
+$?
+-------------------------
+ERROR VARIABLES
+
+The variables $@, $!, $^E, and $? contain information about different types of error conditions that may appear during
+execution of a Perl program.  The variables are shown ordered by the "distance" between the subsystem which reported the
+error and the Perl process.  They correspond to errors detected by the Perl interpreter, C library, operating system, or an
+external program, respectively.
+
+To illustrate the differences between these variables, consider the following Perl expression, which uses a single-quoted
+string.  After execution of this statement, perl may have set all four special error variables:
+
+    eval q{
+        open my $pipe, "/cdrom/install |" or die $!;
+        my @res = <$pipe>;
+        close $pipe or die "bad pipe: $?, $!";
+    };
+
+When perl executes the "eval()" expression, it translates the "open()", "<PIPE>", and "close" calls in the C run-time
+library and thence to the operating system kernel.  perl sets $! to the C library's "errno" if one of these calls fails.
+
+$@ is set if the string to be "eval"-ed did not compile (this may happen if "open" or "close" were imported with bad
+prototypes), or if Perl code executed during evaluation "die()"d.  In these cases the value of $@ is the compile error, or
+the argument to "die" (which will interpolate $! and $?).  (See also Fatal, though.)
+
+Under a few operating systems, $^E may contain a more verbose error indicator, such as in this case, "CDROM tray not
+closed."  Systems that do not support extended error messages leave $^E the same as $!.
+
+Finally, $? may be set to a non-0 value if the external program /cdrom/install fails.  The upper eight bits reflect specific
+error conditions encountered by the program (the program's "exit()" value).  The lower eight bits reflect mode of failure,
+like signal death and core dump information.  See wait(2) for details.  In contrast to $! and $^E, which are set only if an
+error condition is detected, the variable $? is set on each "wait" or pipe "close", overwriting the old value.  This is more
+like $@, which on every "eval()" is always set on failure and cleared on success.
+
+For more details, see the individual descriptions at $@, $!, $^E, and $?.
+
+${^CHILD_ERROR_NATIVE}
+        The native status returned by the last pipe close, backtick ("``") command, successful call to "wait()" or
+        "waitpid()", or from the "system()" operator.  On POSIX-like systems this value can be decoded with the WIFEXITED,
+        WEXITSTATUS, WIFSIGNALED, WTERMSIG, WIFSTOPPED, and WSTOPSIG functions provided by the POSIX module.
+
+        Under VMS this reflects the actual VMS exit status; i.e. it is the same as $? when the pragma "use vmsish 'status'"
+        is in effect.
+
+        This variable was added in Perl v5.10.0.
+
+
+$EXTENDED_OS_ERROR
+$^E     Error information specific to the current operating system.  At the moment, this differs from "$!" under only VMS,
+        OS/2, and Win32 (and for MacPerl).  On all other platforms, $^E is always just the same as $!.
+
+        Under VMS, $^E provides the VMS status value from the last system error.  This is more specific information about
+        the last system error than that provided by $!.  This is particularly important when $!  is set to EVMSERR.
+
+        Under OS/2, $^E is set to the error code of the last call to OS/2 API either via CRT, or directly from perl.
+
+        Under Win32, $^E always returns the last error information reported by the Win32 call "GetLastError()" which
+        describes the last error from within the Win32 API.  Most Win32-specific code will report errors via $^E.  ANSI C
+        and Unix-like calls set "errno" and so most portable Perl code will report errors via $!.
+
+        Caveats mentioned in the description of "$!" generally apply to $^E, also.
+
+        This variable was added in Perl 5.003.
+
+        Mnemonic: Extra error explanation.
+
+
+$EXCEPTIONS_BEING_CAUGHT
+$^S     Current state of the interpreter.
+
+                $^S         State
+                ---------   -------------------------------------
+                undef       Parsing module, eval, or main program
+                true (1)    Executing an eval
+                false (0)   Otherwise
+
+        The first state may happen in $SIG{__DIE__} and $SIG{__WARN__} handlers.
+
+        The English name $EXCEPTIONS_BEING_CAUGHT is slightly misleading, because the "undef" value does not indicate
+        whether exceptions are being caught, since compilation of the main program does not catch exceptions.
+
+        This variable was added in Perl 5.004.
+
+$WARNING
+$^W     The current value of the warning switch, initially true if -w was used, false otherwise, but directly modifiable.
+
+        See also warnings.
+
+        Mnemonic: related to the -w switch.
+
+${^WARNING_BITS}
+        The current set of warning checks enabled by the "use warnings" pragma.  It has the same scoping as the $^H and
+        "%^H" variables.  The exact values are considered internal to the warnings pragma and may change between versions of
+        Perl.
+
+        This variable was added in Perl v5.6.0.
+
+$OS_ERROR
+$ERRNO
+$!      When referenced, $! retrieves the current value of the C "errno" integer variable.  If $! is assigned a numerical
+        value, that value is stored in "errno".  When referenced as a string, $! yields the system error string
+        corresponding to "errno".
+
+        Many system or library calls set "errno" if they fail, to indicate the cause of failure.  They usually do not set
+        "errno" to zero if they succeed and may set "errno" to a non-zero value on success.  This means "errno", hence $!,
+        is meaningful only immediately after a failure:
+
+            if (open my $fh, "<", $filename) {
+                        # Here $! is meaningless.
+                        ...
+            }
+            else {
+                        # ONLY here is $! meaningful.
+                        ...
+                        # Already here $! might be meaningless.
+            }
+            # Since here we might have either success or failure,
+            # $! is meaningless.
+
+        Here, meaningless means that $! may be unrelated to the outcome of the "open()" operator.  Assignment to $! is
+        similarly ephemeral.  It can be used immediately before invoking the "die()" operator, to set the exit value, or to
+        inspect the system error string corresponding to error n, or to restore $! to a meaningful state.
+
+        Perl itself may set "errno" to a non-zero on failure even if no system call is performed.
+
+        Mnemonic: What just went bang?
+
+%OS_ERROR
+%ERRNO
+%!      Each element of "%!" has a true value only if $! is set to that value.  For example, $!{ENOENT} is true if and only
+        if the current value of $! is "ENOENT"; that is, if the most recent error was "No such file or directory" (or its
+        moral equivalent: not all operating systems give that exact error, and certainly not all languages).  The specific
+        true value is not guaranteed, but in the past has generally been the numeric value of $!.  To check if a particular
+        key is meaningful on your system, use "exists $!{the_key}"; for a list of legal keys, use "keys %!".  See Errno for
+        more information, and also see "$!".
+
+        This variable was added in Perl 5.005.
+
+
+$CHILD_ERROR
+$?      The status returned by the last pipe close, backtick ("``") command, successful call to "wait()" or "waitpid()", or
+        from the "system()" operator.  This is just the 16-bit status word returned by the traditional Unix "wait()" system
+        call (or else is made up to look like it).  Thus, the exit value of the subprocess is really ("$? >> 8"), and "$? &
+        127" gives which signal, if any, the process died from, and "$? & 128" reports whether there was a core dump.
+
+        Additionally, if the "h_errno" variable is supported in C, its value is returned via $? if any "gethost*()" function
+        fails.
+
+        If you have installed a signal handler for "SIGCHLD", the value of $? will usually be wrong outside that handler.
+
+        Inside an "END" subroutine $? contains the value that is going to be given to "exit()".  You can modify $? in an
+        "END" subroutine to change the exit status of your program.  For example:
+
+            END {
+                $? = 1 if $? == 255;  # die would make it 255
+            }
+
+        Under VMS, the pragma "use vmsish 'status'" makes $? reflect the actual VMS exit status, instead of the default
+        emulation of POSIX status; see "$?" in perlvms for details.
+
+        Mnemonic: similar to sh and ksh.
+
+$EVAL_ERROR
+$@      The Perl error from the last "eval" operator, i.e. the last exception that was caught.  For "eval BLOCK", this is
+        either a runtime error message or the string or reference "die" was called with.  The "eval STRING" form also
+        catches syntax errors and other compile time exceptions.
+
+        If no error occurs, "eval" sets $@ to the empty string.
+
+        Warning messages are not collected in this variable.  You can, however, set up a routine to process warnings by
+        setting $SIG{__WARN__} as described in "%SIG".
+
+        Mnemonic: Where was the error "at"?
+
+
+
+
+-------------------------------------------------------------------
+TYPE
+
+Perl5 doesn't put its types in the variables but in the operators
+if you want to compare something, your operators tells you what it is and what kind of comparison you're doing
+-------------------------------------------------------------------
+
+
+
+
+
+    $SUBSCRIPT_SEPARATOR
+    $SUBSEP
+    $;      The subscript separator for multidimensional array emulation. If
+            you refer to a hash element as
+
+                $foo{$x,$y,$z}
+
+            it really means
+
+                $foo{join($;, $x, $y, $z)}
+
+            But don't put
+
+                @foo{$x,$y,$z}      # a slice--note the @
+
+            which means
+
+                ($foo{$x},$foo{$y},$foo{$z})
+
+            Default is "\034", the same as SUBSEP in awk. If your keys
+            contain binary data there might not be any safe value for $;.
+
+            Consider using "real" multidimensional arrays as described in
+            perllol.
+
+            Mnemonic: comma (the syntactic subscript separator) is a
+            semi-semicolon.
+
+no 'multidimensional';
+
+   The 'multidimensional' feature
+       This feature enables multidimensional array emulation, a perl 4 (or earlier) feature that was used to emulate
+       multidimensional arrays with hashes.  This works by converting code like $foo{$x, $y} into $foo{join($;, $x, $y)}.  It is
+       enabled by default, but can be turned off to disable multidimensional array emulation.
+
+       When this feature is disabled the syntax that is normally replaced will report a compilation error.
+
+       This feature is available under this name from Perl 5.34 onwards. In previous versions, it was simply on all the time.
+
+       You can use the multidimensional module on CPAN to disable multidimensional array emulation for older versions of Perl.
+
+
+
+subroutine with same name than the package name
+Can't locate object method "new" via package "0" (perhaps you forgot to load "0"?)
+
+
+
+
+
+
+TYPEGLOBS
+perlref
+perlsub
+perldata
+perlmod
+strict
+perlfunc /bareword/i -> chmod, chown, my, open, print printf, require, say
+
+bareword filehandle
+indirect filehandle
+
+       bareword
+           A word sufficiently ambiguous to be deemed illegal under "use strict 'subs'". In
+           the absence of that stricture, a bareword is treated as if quotes were around
+           it.
+
+
+   perl5004delta - what's new for perl5.004
+   perl5005delta - what's new for perl5.005
+   perl56delta - what's new for perl v5.6.0
+   perl561delta - what's new for perl v5.6.1
+   feature - Perl pragma to enable new features
+   DB_File - Perl5 access to Berkeley DB version 1.x
+   Term::ANSIColor - Color screen output using ANSI escape sequences
+
+
+       Obsolete Diagnostics
+           Character class syntax [: :] is reserved for future extensions, Ill-formed
+           logical name |%s| in prime_env_iter, In string, @%s now must be written as \@%s,
+           Probable precedence problem on %s, regexp too big, Use of "$$<digit>" to mean
+           "${$}<digit>" is deprecated
+
+
+
+EQUIVALENCE CLI switches
+
+-C
+-CS
+-CI
+-CO
+-CA
+
+-M
+-m
+
+-L
+
+-t
+-T
+-c
+-w      BEGIN { $^W = 1; }
+-d
+-S
+-D
+
+
+-l  BEGIN { $/ = "\n"; $\ = "\n"; }
+-n
+
+    LINE: while (defined($_ = readline ARGV)) {
+        ();
+    }
+-p
+
+    LINE: while (defined($_ = readline ARGV)) {
+        '???';
+    }
+    continue {
+        die "-p destination: $!\n" unless print $_;
+    }
+-a
+-e
+-E
+(for perl 5.34)
+use feature 'current_sub', 'bitwise', 'evalbytes', 'fc', 'postderef_qq', 'say', 'state', 'switch', 'unicode_strings', 'unicode_eval';
+
+-F
+-i
+-x
+-B
+-0
+
+-- -s
+
+
+
+access to build configuration --> ./Configure -de;  --> use Config;
+
+
+
+
+
+variables
+- public  --> package/global variables, our
+- private -->                           my
+
+typeglobs
+
+function methods
+- public (dafault)  # qualified name  mypackage::function()
+- imported          # function()  $obj->function() ??
+- @ISA              # function()  $obj->function() ??
+- private           # my sub
+
+use base "deps";
+use parent "deps";
+
+use lib 'path/to/lib/';
+use lib '.';
+
+@ISA
+push @ISA, "deps";
+
+require
+use     ---> BEGIN { require ; import() }
+
+use Exporter 'import';
+OUR @EXPORT = qw(function);
+
+sub import {
+    no strict 'refs';
+    *{ (caller)[0] . "::$package_name" } = \&{ $package_name . "::func" }
+
+}
+
+$obj = {};
+print "true" if ref $obj eq "HASH";             # true
+blesss $obj, "mypack"; 
+print "false" if ref $obj ne "HASH";            # false
+print "true" if UNIVERSAL::isa($obj, "HASH");   # true
+
+that way, if we have an object that can bless an array ref or a hash ref in function of arguments passed to new / the constructor
+we can know which one it is
+
+
+no hierarchy in packages;
+but one::two::three;
+
+pel will look for file three.pm inside the directory one/two/
+
+
+
+
+open
+r       <
+w       >
+a       >>
+r+     +<
+w+     +>
+a+     +>>
+
+
+fopen
+
+┌─────────────┬───────────────────────────────┐
+│fopen() mode │ open() flags                  │
+├─────────────┼───────────────────────────────┤
+│     r       │ O_RDONLY                      │
+├─────────────┼───────────────────────────────┤
+│     w       │ O_WRONLY | O_CREAT | O_TRUNC  │
+├─────────────┼───────────────────────────────┤
+│     a       │ O_WRONLY | O_CREAT | O_APPEND │
+├─────────────┼───────────────────────────────┤
+│     r+      │ O_RDWR                        │
+├─────────────┼───────────────────────────────┤
+│     w+      │ O_RDWR | O_CREAT | O_TRUNC    │
+├─────────────┼───────────────────────────────┤
+│     a+      │ O_RDWR | O_CREAT | O_APPEND   │
+└─────────────┴───────────────────────────────┘
+
+r      Open text file for reading.  The stream is positioned at the be‐
+      ginning of the file.
+
+r+     Open  for  reading and writing.  The stream is positioned at the
+      beginning of the file.
+
+w      Truncate file to zero length or create text  file  for  writing.
+      The stream is positioned at the beginning of the file.
+
+w+     Open  for  reading  and writing.  The file is created if it does
+      not exist, otherwise it is truncated.  The stream is  positioned
+      at the beginning of the file.
+
+a      Open  for  appending (writing at end of file).  The file is cre‐
+      ated if it does not exist.  The stream is positioned at the  end
+      of the file.
+
+a+     Open  for  reading  and appending (writing at end of file).  The
+      file is created if it does not exist.  Output is always appended
+      to  the  end  of  the file.  POSIX is silent on what the initial
+      read position is when using this mode.  For glibc,  the  initial
+      file  position  for reading is at the beginning of the file, but
+      for Android/BSD/MacOS, the initial file position for reading  is
+      at the end of the file.
+
+
+###########################################################################
+
+
+
+
+
+
+
+
+
+
+./myparser2.pl | awk '!seen[$0]++' | less
+./myparser2.pl | perl -ne 'print if !$seen{$_}++' | less
+
+
+order of operations => value of $seen{$_}, boolean coercion, negation, (postfix) increment
+boolean coercion  0 => false, >= 1 => true
+if key doesn't exists, value initilazied to 0
+
+
+operator precedence
+
+term   >   ++   >   !          ????
+
+
+ERROR HANDLING
+
+OLD WAY
+
+perl -E '$ok=eval { die "error"; 1 }; unless ($ok) { say "catched $@" }'
+
+perl -E 'unless(eval { die "error"; 1 }) { say "catched $@" } '
+
+perl -E 'eval { die "error"; 1 } or do { say "catched $@" }; '
+
+
+
+special variable
+$?      The status returned by the last
+        pipe close,
+        backtick (``) command,
+        successful call to "wait()" or "waitpid()",
+        or from the "system()" operator
+
+If $?==0 that means the last statement was successful else last statement had some error
+
+ $@      The Perl error from the last "eval" operator, i.e. the last
+            exception that was caught.
+
+
+
+
+NEW WAY
+use feature 'try';
+no warnings 'experimental::try';
+
+
+
+
+
+use pack::age;
+==
+BEGIN {
+    require pack::age;
+    import pack::age;
+}
+
+require pack::age;
+@ISA = "pack::age";
+
+sub import {
+    my $package = shift;
+    ...
+}
+
+use     --> import
+no      --> unimport
+
+
+
+
+*CORE::GLOBAL::open = sub { say "open" }
+*CORE::GLOBAL::open = \&subroutine;
+
+
+$SIG{__WARN__} = sub {}
+$SIG{__DIE__} = sub {}
+
+
+
+IDIOMS
+
+trim
+$string =~ s/^\s+//;
+$string =~ s/\s+$//;
+
+select((select(FOO),$|++)[0])
+->
+use IO::Handle;
+FOO->autoflush(1)
+
+
+secret operators
+perlsecret
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,1063 @@
+
+
+my @lines = $text =~ m/(.*?)\n?/;		--> does what I want ????
+
+
+
+SPECIAL VARIABLES
+
+$<digits> ($1, $2, ...)
+@{^CAPTURE}
+
+$&  $MATCH 
+$`  $PREMATCH
+$'  $POSTMATCH
+${^MATCH}
+${^PREMATCH}
+${^POSTMATCH}
+
+@-  @LAST_MATCH_START
+@+  @LAST_MATCH_END
+
+$+  $LAST_PAREN_MATCH
+$^N $LAST_SUBMATCH_RESULT
+
+%+  %{^CAPTURE}      %LAST_PAREN_MATCH
+%-  %{^CAPTURE_ALL}
+
+$^R $LAST_REGEXP_CODE_RESULT
+perl -le '"bcda" =~ /^ (?: a (?{1}) | b (?{2}) (?: c (?{3}) |  d (?{4}))? | c (?{5})| d (?{6}) )/x; print $^R'
+perl -le '"bzcda" =~ /^ (?: a (?{1}) | b (?{2}) (?: c (?{3}) |  d (?{4}))? | c (?{5})| d (?{6}) )/x; print $^R'
+${^RE_COMPILE_RECURSION_LIMIT}
+${^RE_DEBUG_FLAGS}
+${^RE_TRIE_MAXBUF}
+
+plus 2 special variables not mention in perlvar but it perlre and one of the perldelta
+$REGMARK
+$REGERROR
+################################################################################################################################
+perl5180delta.1perl :
+$REGMARK
+$REGERROR
+
+       perl5180delta - what is new for perl v5.18.0
+
+       •   The new "RXf_MODIFIES_VARS" flag can be set by custom regular expression engines to indicate that the execution of the
+           regular expression may cause variables to be modified.  This lets "s///" know to skip certain optimisations.  Perl's own
+           regular expression engine sets this flag for the special backtracking verbs that set $REGMARK and $REGERROR.
+
+################################################################################################################################
+perlre :
+
+
+Special Backtracking Control Verbs
+These special patterns are generally of the form "(*VERB:arg)". Unless otherwise stated the arg argument is optional; in
+some cases, it is mandatory.
+
+Any pattern containing a special backtracking verb that allows an argument has the special behaviour that when executed it
+sets the current package's $REGERROR and $REGMARK variables. When doing so the following rules apply:
+
+On failure, the $REGERROR variable will be set to the arg value of the verb pattern, if the verb was involved in the failure
+of the match. If the arg part of the pattern was omitted, then $REGERROR will be set to the name of the last "(*MARK:NAME)"
+pattern executed, or to TRUE if there was none. Also, the $REGMARK variable will be set to FALSE.
+
+On a successful match, the $REGERROR variable will be set to FALSE, and the $REGMARK variable will be set to the name of the
+last "(*MARK:NAME)" pattern executed.  See the explanation for the "(*MARK:NAME)" verb below for more details.
+
+NOTE: $REGERROR and $REGMARK are not magic variables like $1 and most other regex-related variables. They are not local to a
+scope, nor readonly, but instead are volatile package variables similar to $AUTOLOAD.  They are set in the package
+containing the code that executed the regex (rather than the one that compiled it, where those differ).  If necessary, you
+can use "local" to localize changes to these variables to a specific scope before executing a regex.
+
+If a pattern does not contain a special backtracking verb that allows an argument, then $REGERROR and $REGMARK are not
+touched at all.
+
+
+  "(*MARK:NAME)" "(*:NAME)"
+      This zero-width pattern can be used to mark the point reached in a string when a certain part of the pattern has been
+      successfully matched. This mark may be given a name. A later "(*SKIP)" pattern will then skip forward to that point
+      if backtracked into on failure. Any number of "(*MARK)" patterns are allowed, and the NAME portion may be duplicated.
+
+      In addition to interacting with the "(*SKIP)" pattern, "(*MARK:NAME)" can be used to "label" a pattern branch, so
+      that after matching, the program can determine which branches of the pattern were involved in the match.
+
+      When a match is successful, the $REGMARK variable will be set to the name of the most recently executed
+      "(*MARK:NAME)" that was involved in the match.
+
+      This can be used to determine which branch of a pattern was matched without using a separate capture group for each
+      branch, which in turn can result in a performance improvement, as perl cannot optimize "/(?:(x)|(y)|(z))/" as
+      efficiently as something like "/(?:x(*MARK:x)|y(*MARK:y)|z(*MARK:z))/".
+
+      When a match has failed, and unless another verb has been involved in failing the match and has provided its own name
+      to use, the $REGERROR variable will be set to the name of the most recently executed "(*MARK:NAME)".
+
+      See "(*SKIP)" for more details.
+
+      As a shortcut "(*MARK:NAME)" can be written "(*:NAME)".
+
+  "(*FAIL)" "(*F)" "(*FAIL:arg)"
+      This pattern matches nothing and always fails. It can be used to force the engine to backtrack. It is equivalent to
+      "(?!)", but easier to read. In fact, "(?!)" gets optimised into "(*FAIL)" internally. You can provide an argument so
+      that if the match fails because of this "FAIL" directive the argument can be obtained from $REGERROR.
+
+      It is probably useful only when combined with "(?{})" or "(??{})".
+
+  "(*ACCEPT)" "(*ACCEPT:arg)"
+      This pattern matches nothing and causes the end of successful matching at the point at which the "(*ACCEPT)" pattern
+      was encountered, regardless of whether there is actually more to match in the string. When inside of a nested
+      pattern, such as recursion, or in a subpattern dynamically generated via "(??{})", only the innermost pattern is
+      ended immediately.
+
+      If the "(*ACCEPT)" is inside of capturing groups then the groups are marked as ended at the point at which the
+      "(*ACCEPT)" was encountered.  For instance:
+
+        'AB' =~ /(A (A|B(*ACCEPT)|C) D)(E)/x;
+
+      will match, and $1 will be "AB" and $2 will be "B", $3 will not be set. If another branch in the inner parentheses
+      was matched, such as in the string 'ACDE', then the "D" and "E" would have to be matched as well.
+
+      You can provide an argument, which will be available in the var $REGMARK after the match completes.
+
+################################################################################################################################
+
+OPERATORS
+=~
+~!
+
+FUNCTIONS
+m
+s
+qr
+split
+
+a / literal
+.
+
+|  ALTERNATION
+
+QUANTIFIERS
+?
++
+*
+{n}
+{n,m}
+{,n}
+{n,}
+? lazy
++ possessive
+
+CHARACTER CLASSES 
+[...]
+[abc]
+[a-e]
+[^a-e]
+[-]
+[^-]
+[[:...:]]        POSIX character class [[:upper:]] [[:lower:]] etc
+(?[...])         extended bracketed character class
+
+\d  [0-9]         digit character
+\D  [^0-9]        non digit character
+\w  [a-zA-Z0-9_]  word character
+\W  [^a-zA-Z0-9_] word character
+\s  [ \t\n\r\f]
+\S  [^ \t\n\r\f]
+\h  [ \t]
+\H  [^ \t]
+\v  [\n\r\f]
+\V  [~\n\r\f]
+\N               any character but \n, not affected by /s modifier
+\R               linebreak
+\p{}             named property
+\pP              named property
+\P{}             negated named property
+\PP              negated named property
+\X               Unicode "eXtended grapheme cluster"
+
+ESCAPE SEQUENCES
+Because patterns are processed as double-quoted strings, the following also work:
+
+\t          tab                   (HT, TAB)
+\n          newline               (LF, NL)
+\r          return                (CR)
+\f          form feed             (FF)
+\a          alarm (bell)          (BEL)
+\e          escape (think troff)  (ESC)
+\cK         control char          (example: VT)
+\x{}, \x00  character whose ordinal is the given hexadecimal number
+\N{name}    named Unicode character or character sequence
+\N{U+263D}  Unicode character     (example: FIRST QUARTER MOON)
+\o{}, \000  character whose ordinal is the given octal number
+\l          lowercase next char (think vi)
+\u          uppercase next char (think vi)
+\L          lowercase until \E (think vi)
+\U          uppercase until \E (think vi)
+\Q          quote (disable) pattern metacharacters until \E
+\E          end either case modification or quoted section, think vi
+
+ANCHORS / zero-width assertions
+^
+$
+\b{}   Match at Unicode boundary of specified type
+\B{}   Match where corresponding \b{} doesn't match
+\b     Match a \w\W or \W\w boundary
+\B     Match except at a \w\W or \W\w boundary
+\A     Match only at beginning of string
+\Z     Match only at end of string, or before newline at the end
+\z     Match only at end of string
+\G     Match only at pos() (e.g. at the end-of-match position
+	   of prior m//g)
+
+QUOTING
+\Q .. \E  quotemeta
+\L .. \E  lowercase
+\U .. \E  uppercase
+
+\ ESCAPING a metacharacter
+
+METACHARACTERS
+
+\     always except when itself escaped by another \
+
+not in []
+^     
+.     
+$     but can mean interpolate a scalar
+|     
+()    
+[     
+*     
++     
+?     
+{     
+----------------
+in []
+^     at the beginning of []
+]     only in [], and not first
+-     only in [] interior, except a beginning or end position
+----------------
+{     when following certain escape sequences starts a modifier to the meaning of the sequence
+}     end sequence started by {
+#     only with /x modifier
+----------------
+
+REGEX MODIFIERS
+m   multiline 
+s   single line
+i   case insensitive
+x   extended ignore whitespace except whitespace inside character classes or escaped whitespace
+xx  extended ignore all whitespace except escaped whitespace
+p   Preserve the string matched such that "${^PREMATCH}", "${^MATCH}", and "${^POSTMATCH}" are available for use after matching
+n   Prevent the grouping metacharacters "()" from capturing
+
+Character set modifiers
+u    sets the character set to (U)nicode
+a    also sets the character set to Unicode, BUT adds several restrictions for (A)SCII-safe matching
+d    is the old, problematic, pre-5.14 (D)efault character set behavior.  Its only use is to force that old behavior.
+l    sets the character set to that of whatever Locale is in effect at the time of the execution of the pattern match
+
+o    pretend to optimize your code, but actually introduce bugs
+
+g    globally match the pattern repeatedly in the string
+c    keep the current position during repeated matching
+
+Substitution-specific modifiers
+
+e    evaluate the right-hand side as an expression
+ee   evaluate the right side as a string then eval the result
+r    perform non-destructive substitution and return the new value
+
+
+()		capturing group
+
+rules (Combining RE Pieces)
+backtracking
+
+(?#)       inline comment
+(?i)       inline modifiers
+           Zero or more embedded pattern-match modifiers, to be turned on (or turned off if preceded by "-") for the remainder of
+           the pattern or the remainder of the enclosing pattern group (if any).
+(?:)       non-capturing group
+(?|)       branch reset pattern
+
+LOOKAROUNDS
+(?=)       positive lookahead
+(?!)       negative lookehead
+(?<=) \K   positive lookahead
+(?<!)      negative lookahead
+"(*pla:pattern)"
+"(*positive_lookahead:pattern)"
+"(*nla:pattern)"
+"(*negative_lookahead:pattern)"
+"(*plb:pattern)"
+"(*positive_lookbehind:pattern)"
+"(*nlb:pattern)"
+"(*negative_lookbehind:pattern)"
+
+
+NAMED CAPTURING GROUP
+(?<name>)
+(?P<name>)                       (PCRE/Python)
+
+BACKREFERENCE TO A NAMED CAPTURE GROUP
+\k<name>
+\k'name'
+\k{name}
+\g{name} 
+(?P=name)                        (PCRE/Python)
+
+RECURSE TO A NAMED SUBPATTERN
+(?&name)
+(?P>name)                        (PCRE/Python)
+
+RECURSIVE SUBPATTERN
+(?PARNO) (?-PARNO) (?+PARNO) (?R) (?0)
+
+
+PCRE/Python Support
+As of Perl 5.10.0, Perl supports several Python/PCRE-specific extensions to the regex syntax. While Perl programmers are
+encouraged to use the Perl-specific syntax, the following are also accepted:
+
+"(?P<NAME>pattern)"  Define a named capture group. Equivalent to "(?<NAME>pattern)".
+"(?P=NAME)"          Backreference to a named capture group. Equivalent to "\g{NAME}".
+"(?P>NAME)"          Subroutine call to a named capture group. Equivalent to "(?&NAME)".
+----------------------------------------------------------------------------
+
+BACKREFERENCE
+\1        Backreference to a specific capture group or buffer.
+            '1' may actually be any positive integer.
+\g1       Backreference to a specific or previous group,
+\g{-1}    The number may be negative indicating a relative
+                          previous group and may optionally be wrapped in
+                          curly brackets for safer parsing.
+
+
+(?{})
+(??{})
+
+CONDITIONS
+(?(condition)yes-pattern)
+(?(condition)yes-pattern|no-pattern)
+
+the (condition) can be :
+- an integer in parentheses
+      (which is valid if the corresponding pair of parentheses matched);
+
+- a lookahead/lookbehind/evaluate zero-width assertion;
+- a name in angle brackets or single quotes
+      (which is valid if a group with the given name matched);
+
+- the special symbol "(R)"
+      (true when evaluated inside of recursion or eval).  Additionally the "R" may be followed by a number, (which will be
+      true when evaluated when recursing inside of the appropriate group), or by "&NAME", in which case it will be true
+      only when evaluated during recursion in the named group.
+
+Here's a summary of the possible predicates:
+
+"(1)" "(2)" ...
+    Checks if the numbered capturing group has matched something.  Full syntax: "(?(1)then|else)"
+
+"(<NAME>)" "('NAME')"
+    Checks if a group with the given name has matched something.  Full syntax: "(?(<name>)then|else)"
+
+"(?=...)" "(?!...)" "(?<=...)" "(?<!...)"
+    Checks whether the pattern matches (or does not match, for the "!"  variants).  Full syntax:
+    "(?(?=lookahead)then|else)"
+
+"(?{ CODE })"
+    Treats the return value of the code block as the condition.  Full syntax: "(?(?{ code })then|else)"
+
+"(R)"
+   Checks if the expression has been evaluated inside of recursion.  Full syntax: "(?(R)then|else)"
+
+"(R1)" "(R2)" ...
+   Checks if the expression has been evaluated while executing directly inside of the n-th capture group. This check is
+   the regex equivalent of
+
+	 if ((caller(0))[3] eq 'subname') { ... }
+
+   In other words, it does not check the full recursion stack.
+
+   Full syntax: "(?(R1)then|else)"
+
+"(R&NAME)"
+   Similar to "(R1)", this predicate checks to see if we're executing directly inside of the leftmost group with a
+   given name (this is the same logic used by "(?&NAME)" to disambiguate). It does not check the full stack, but only
+   the name of the innermost active recursion.  Full syntax: "(?(R&name)then|else)"
+
+"(DEFINE)"
+   In this case, the yes-pattern is never directly executed, and no no-pattern is allowed. Similar in spirit to
+   "(?{0})" but more efficient.  See below for details.  Full syntax: "(?(DEFINE)definitions...)"
+
+
+
+(?>)	atomic group
+"(*atomic:pattern)"
+ An "independent" subexpression, one which matches the substring that a standalone pattern would match if anchored at the
+ given position, and it matches nothing other than this substring.  This construct is useful for optimizations of what
+ would otherwise be "eternal" matches, because it will not backtrack (see "Backtracking").  It may also be useful in
+ places where the "grab all you can, and do not give anything back" semantic is desirable.
+
+
+(?[]) See "Extended Bracketed Character Classes" in perlrecharclass.
+      Note that this feature is currently experimental; using it yields a warning in the "experimental::regex_sets" category.
+
+
+
+Special Backtracking Control Verbs
+
+"(*PRUNE)" "(*PRUNE:NAME)"
+"(*SKIP)" "(*SKIP:NAME)"
+"(*MARK:NAME)" "(*:NAME)"
+"(*THEN)" "(*THEN:NAME)"
+"(*COMMIT)" "(*COMMIT:arg)"
+"(*FAIL)" "(*F)" "(*FAIL:arg)"
+"(*ACCEPT)" "(*ACCEPT:arg)"
+
+
+
+backtracking control verbs
+
+
+Combining RE Pieces
+Each of the elementary pieces of regular expressions which were described before (such as "ab" or "\Z") could match at most
+one substring at the given position of the input string.  However, in a typical regular expression these elementary pieces
+are combined into more complicated patterns using combining operators "ST", "S|T", "S*" etc.  (in these examples "S" and "T"
+are regular subexpressions).
+
+Such combinations can include alternatives, leading to a problem of choice: if we match a regular expression "a|ab" against
+"abc", will it match substring "a" or "ab"?  One way to describe which substring is actually matched is the concept of
+backtracking (see "Backtracking").  However, this description is too low-level and makes you think in terms of a particular
+implementation.
+
+Another description starts with notions of "better"/"worse".  All the substrings which may be matched by the given regular
+expression can be sorted from the "best" match to the "worst" match, and it is the "best" match which is chosen.  This
+substitutes the question of "what is chosen?"  by the question of "which matches are better, and which are worse?".
+
+Again, for elementary pieces there is no such question, since at most one match at a given position is possible.  This
+section describes the notion of better/worse for combining operators.  In the description below "S" and "T" are regular
+subexpressions.
+
+"ST"
+   Consider two possible matches, "AB" and "A'B'", "A" and "A'" are substrings which can be matched by "S", "B" and "B'"
+   are substrings which can be matched by "T".
+
+   If "A" is a better match for "S" than "A'", "AB" is a better match than "A'B'".
+
+   If "A" and "A'" coincide: "AB" is a better match than "AB'" if "B" is a better match for "T" than "B'".
+
+"S|T"
+   When "S" can match, it is a better match than when only "T" can match.
+
+   Ordering of two matches for "S" is the same as for "S".  Similar for two matches for "T".
+
+"S{REPEAT_COUNT}"
+   Matches as "SSS...S" (repeated as many times as necessary).
+
+"S{min,max}"
+   Matches as "S{max}|S{max-1}|...|S{min+1}|S{min}".
+
+"S{min,max}?"
+   Matches as "S{min}|S{min+1}|...|S{max-1}|S{max}".
+
+"S?", "S*", "S+"
+   Same as "S{0,1}", "S{0,BIG_NUMBER}", "S{1,BIG_NUMBER}" respectively.
+
+"S??", "S*?", "S+?"
+   Same as "S{0,1}?", "S{0,BIG_NUMBER}?", "S{1,BIG_NUMBER}?" respectively.
+
+"(?>S)"
+   Matches the best match for "S" and only that.
+
+"(?=S)", "(?<=S)"
+   Only the best match for "S" is considered.  (This is important only if "S" has capturing parentheses, and backreferences
+   are used somewhere else in the whole regular expression.)
+
+"(?!S)", "(?<!S)"
+   For this grouping operator there is no need to describe the ordering, since only whether or not "S" can match is
+   important.
+
+"(??{ EXPR })", "(?PARNO)"
+   The ordering is the same as for the regular expression which is the result of EXPR, or the pattern contained by capture
+   group PARNO.
+
+"(?(condition)yes-pattern|no-pattern)"
+   Recall that which of yes-pattern or no-pattern actually matches is already determined.  The ordering of the matches is
+   the same as for the chosen subexpression.
+
+The above recipes describe the ordering of matches at a given position.  One more rule is needed to understand how a match
+is determined for the whole regular expression: a match at an earlier position is always better than a match at a later
+position.
+
+
+
+Backtracking
+NOTE: This section presents an abstract approximation of regular expression behavior.  For a more rigorous (and complicated)
+view of the rules involved in selecting a match among possible alternatives, see "Combining RE Pieces".
+
+A fundamental feature of regular expression matching involves the notion called backtracking, which is currently used (when
+needed) by all regular non-possessive expression quantifiers, namely "*", "*?", "+", "+?", "{n,m}", and "{n,m}?".
+Backtracking is often optimized internally, but the general principle outlined here is valid.
+
+For a regular expression to match, the entire regular expression must match, not just part of it.  So if the beginning of a
+pattern containing a quantifier succeeds in a way that causes later parts in the pattern to fail, the matching engine backs
+up and recalculates the beginning part--that's why it's called backtracking.
+
+Here is an example of backtracking:  Let's say you want to find the word following "foo" in the string "Food is on the foo
+table.":
+
+   $_ = "Food is on the foo table.";
+   if ( /\b(foo)\s+(\w+)/i ) {
+       print "$2 follows $1.\n";
+   }
+
+When the match runs, the first part of the regular expression ("\b(foo)") finds a possible match right at the beginning of
+the string, and loads up $1 with "Foo".  However, as soon as the matching engine sees that there's no whitespace following
+the "Foo" that it had saved in $1, it realizes its mistake and starts over again one character after where it had the
+tentative match.  This time it goes all the way until the next occurrence of "foo". The complete regular expression matches
+this time, and you get the expected output of "table follows foo."
+
+Sometimes minimal matching can help a lot.  Imagine you'd like to match everything between "foo" and "bar".  Initially, you
+write something like this:
+
+   $_ =  "The food is under the bar in the barn.";
+   if ( /foo(.*)bar/ ) {
+       print "got <$1>\n";
+   }
+
+Which perhaps unexpectedly yields:
+
+ got <d is under the bar in the >
+
+That's because ".*" was greedy, so you get everything between the first "foo" and the last "bar".  Here it's more effective
+to use minimal matching to make sure you get the text between a "foo" and the first "bar" thereafter.
+
+   if ( /foo(.*?)bar/ ) { print "got <$1>\n" }
+ got <d is under the >
+
+Here's another example. Let's say you'd like to match a number at the end of a string, and you also want to keep the
+preceding part of the match.  So you write this:
+
+   $_ = "I have 2 numbers: 53147";
+   if ( /(.*)(\d*)/ ) {                                # Wrong!
+       print "Beginning is <$1>, number is <$2>.\n";
+   }
+
+That won't work at all, because ".*" was greedy and gobbled up the whole string. As "\d*" can match on an empty string the
+complete regular expression matched successfully.
+
+   Beginning is <I have 2 numbers: 53147>, number is <>.
+
+Here are some variants, most of which don't work:
+
+   $_ = "I have 2 numbers: 53147";
+   @pats = qw{
+       (.*)(\d*)
+       (.*)(\d+)
+       (.*?)(\d*)
+       (.*?)(\d+)
+       (.*)(\d+)$
+       (.*?)(\d+)$
+       (.*)\b(\d+)$
+       (.*\D)(\d+)$
+   };
+
+   for $pat (@pats) {
+       printf "%-12s ", $pat;
+       if ( /$pat/ ) {
+           print "<$1> <$2>\n";
+       } else {
+           print "FAIL\n";
+       }
+   }
+
+That will print out:
+
+   (.*)(\d*)    <I have 2 numbers: 53147> <>
+   (.*)(\d+)    <I have 2 numbers: 5314> <7>
+   (.*?)(\d*)   <> <>
+   (.*?)(\d+)   <I have > <2>
+   (.*)(\d+)$   <I have 2 numbers: 5314> <7>
+   (.*?)(\d+)$  <I have 2 numbers: > <53147>
+   (.*)\b(\d+)$ <I have 2 numbers: > <53147>
+   (.*\D)(\d+)$ <I have 2 numbers: > <53147>
+
+As you see, this can be a bit tricky.  It's important to realize that a regular expression is merely a set of assertions
+that gives a definition of success.  There may be 0, 1, or several different ways that the definition might succeed against
+a particular string.  And if there are multiple ways it might succeed, you need to understand backtracking to know which
+variety of success you will achieve.
+
+When using lookahead assertions and negations, this can all get even trickier.  Imagine you'd like to find a sequence of
+non-digits not followed by "123".  You might try to write that as
+
+   $_ = "ABC123";
+   if ( /^\D*(?!123)/ ) {                # Wrong!
+       print "Yup, no 123 in $_\n";
+   }
+
+But that isn't going to match; at least, not the way you're hoping.  It claims that there is no 123 in the string.  Here's a
+clearer picture of why that pattern matches, contrary to popular expectations:
+
+   $x = 'ABC123';
+   $y = 'ABC445';
+
+   print "1: got $1\n" if $x =~ /^(ABC)(?!123)/;
+   print "2: got $1\n" if $y =~ /^(ABC)(?!123)/;
+
+   print "3: got $1\n" if $x =~ /^(\D*)(?!123)/;
+   print "4: got $1\n" if $y =~ /^(\D*)(?!123)/;
+
+This prints
+
+   2: got ABC
+   3: got AB
+   4: got ABC
+
+You might have expected test 3 to fail because it seems to a more general purpose version of test 1.  The important
+difference between them is that test 3 contains a quantifier ("\D*") and so can use backtracking, whereas test 1 will not.
+What's happening is that you've asked "Is it true that at the start of $x, following 0 or more non-digits, you have
+something that's not 123?"  If the pattern matcher had let "\D*" expand to "ABC", this would have caused the whole pattern
+to fail.
+
+The search engine will initially match "\D*" with "ABC".  Then it will try to match "(?!123)" with "123", which fails.  But
+because a quantifier ("\D*") has been used in the regular expression, the search engine can backtrack and retry the match
+differently in the hope of matching the complete regular expression.
+
+The pattern really, really wants to succeed, so it uses the standard pattern back-off-and-retry and lets "\D*" expand to
+just "AB" this time.  Now there's indeed something following "AB" that is not "123".  It's "C123", which suffices.
+
+We can deal with this by using both an assertion and a negation.  We'll say that the first part in $1 must be followed both
+by a digit and by something that's not "123".  Remember that the lookaheads are zero-width expressions--they only look, but
+don't consume any of the string in their match.  So rewriting this way produces what you'd expect; that is, case 5 will
+fail, but case 6 succeeds:
+
+   print "5: got $1\n" if $x =~ /^(\D*)(?=\d)(?!123)/;
+   print "6: got $1\n" if $y =~ /^(\D*)(?=\d)(?!123)/;
+
+   6: got ABC
+
+In other words, the two zero-width assertions next to each other work as though they're ANDed together, just as you'd use
+any built-in assertions:  "/^$/" matches only if you're at the beginning of the line AND the end of the line simultaneously.
+The deeper underlying truth is that juxtaposition in regular expressions always means AND, except when you write an explicit
+OR using the vertical bar.  "/ab/" means match "a" AND (then) match "b", although the attempted matches are made at
+different positions because "a" is not a zero-width assertion, but a one-width assertion.
+
+WARNING: Particularly complicated regular expressions can take exponential time to solve because of the immense number of
+possible ways they can use backtracking to try for a match.  For example, without internal optimizations done by the regular
+expression engine, this will take a painfully long time to run:
+
+   'aaaaaaaaaaaa' =~ /((a{0,5}){0,5})*[c]/
+
+And if you used "*"'s in the internal groups instead of limiting them to 0 through 5 matches, then it would take forever--or
+until you ran out of stack space.  Moreover, these internal optimizations are not always applicable.  For example, if you
+put "{0,5}" instead of "*" on the external group, no current optimization is applicable, and the match takes a long time to
+finish.
+
+A powerful tool for optimizing such beasts is what is known as an "independent group", which does not backtrack (see
+""(?>pattern)"").  Note also that zero-length lookahead/lookbehind assertions will not backtrack to make the tail match,
+since they are in "logical" context: only whether they match is considered relevant.  For an example where side-effects of
+lookahead might have influenced the following match, see ""(?>pattern)"".
+
+##############################################################################################################
+##############################################################################################################
+##############################################################################################################
+
+
+
+the 4 real backtracking control verbs : (*THEN) (*PRUNE) (*SKIP) (*COMMIT)
+
+--------------------------------------------------------------------------------------------------------
+
+(*THEN)  do not backtrack, continue the match attempt but go to next branch of the alternation
+      (if no branch, stop match attempt and advance to next string position is there are characters left in the strings)
+
+--------------------------------------------------------------------------------------------------------
+(*PRUNE) do not backtrack, stop the match attempt and advance to next string position
+
+--------------------------------------------------------------------------------------------------------
+(*SKIP)  do not backtrack, stop the match attempt, advance in the string, but not to the next character,
+         advance to the position in the string where the match attempt crossed (*SKIP) from left to right,
+         and start a new match attempt
+--------------------------------------------------------------------------------------------------------
+(Perl as a inconsistent behavior with (*SKIP))
+https://rt.perl.org/Ticket/Display.html?id=126327
+https://github.com/Perl/perl5/issues/14979 (*SKIP) not triggering correctly #14979
+--------------------------------------------------------------------------------------------------------
+
+(*SKIP)(*FAIL) construct
+
+(*MARK:mark_name) ... (*SKIP:mark_name)
+
+--------------------------------------------------------------------------------------------------------
+(*COMMIT) do not backtrack, stop match attempt and do not start another match attempt, stop the entire match,
+          when trying to cross it from right to left, the entire match fail
+          UNLESS another backtracking control verb like (*PRUNE) or (*SKIP) is on the right of (*COMMIT) and have been crossed
+(Perl as a inconsistent behavior with (*COMMIT))
+https://rt.perl.org/Ticket/Display.html?id=126328
+https://github.com/Perl/perl5/issues/14980 (*COMMIT) fires inconsistently when another backtracking control verb occurs to its right #14980
+
+
+--------------------------------------------------------------------------------------------------------
+Backtracking Control Verbs inside Lookarounds, Subpatterns or Atomic Groups
+
+Within a lookaround, subpattern or atomic group, a backtracking control verb only affects the sub-match. For instance, (*COMMIT) only commits the engine with respect to the match within a lookaround—not with respect to the overall match.
+
+Mileage may vary so experimentation is key.
+
+--------------------------------------------------------------------------------------------------------
+Double Negatives
+If you should wish to use backtracking control verbs within negative lookarounds (come on, you know you're asking for trouble!) remember to pay close attention to logic. For instance, a (*SKIP) that causes the failure of the pattern that dwells within a negative lookahead thereby causes the negative lookahead assertion to succeed. Likewise, an (*ACCEPT) (a verb we'll soon see) makes the pattern succeed, resulting in a failure of the negative lookahead assertion.
+
+--------------------------------------------------------------------------------------------------------
+Backtracking Control Verbs inside Repeated Groups
+When a backtracking control verb lives within a repeated group, PCRE fires the verb at the point where it is backtracked. In contrast, Perl, strangely, chooses to ignore verbs when the quantified group has not yet been fully matched.  This is the object of a bug report.
+https://rt.perl.org/Ticket/Display.html?id=126343
+https://github.com/Perl/perl5/issues/14983 Quantified (*COMMIT) fails to fire #14983
+
+--------------------------------------------------------------------------------------------------------
+
+
+(*ACCEPT) not a BACKTRACKING control verb,
+          when crossed from left to right, the match immediately succeed, and the portion of the string that matched $&
+          get its end where the match attempt stopped in the string when the regex arrived at (*ACCEPT)
+--------------------------------------------------------------------------------------------------------
+
+USE CASE
+The only use case for (*ACCEPT) that I'm aware of is when the branches of an alternation are distributed into a later expression that is not required for all of the branches. For instance, suppose you want to match any of these patterns: BAZ, BIZ, BO.
+
+You could simply write BAZ|BIZ|BO, but if B and Z stand for complicated sub-patterns, you'll probably look for ways to factor the B and Z patterns. A first pass might give you B(?:AZ|IZ|O), but that solution doesn't factor the Z. Another option would be B(?:A|I)Z|BO, but it forces you to repeat the B. This pattern allows you to factor both the B and the Z:
+
+B(?:A|I|O(*ACCEPT))Z
+
+If the engine follows the O branch, it never matches BOZ because it returns BO as soon as (*ACCEPT) is encountered—which is what we wanted.
+
+Are there other ways to factor the B and Z patterns? Sure. Conditionals come to mind, for instance:
+- Option 1: B(?:(A|I)|O)(?(1)Z) (if A or I have been captured to Group 1, then match Z)
+- Option 2: B(?:A|I|(O))(?(1)|Z) (if O has been captured to Group 1, then match the empty string, otherwise match Z)
+
+Please note that (*ACCEPT) is not the opposite of (*FAIL)
+--------------------------------------------------------------------------------------------------------
+
+(*FAIL) means at the present token in the string, the current token does not match. The result is no different from trying to match a b character with a p token: the engine chokes on the token, and its next move is to backtrack in order to find a different way to make the current match attempt succeed.
+(*FAIL) cause the current match attemp to backtrack, as if the next literal character of the string did not match the next
+        token/character of the regex
+
+--------------------------------------------------------------------------------------------------------
+equivalent to (?!) negative lookahead of an empty string (empty string always match, so the negative lookahead is always satisfied)
+
+The regex syntax offers many options besides (?!) to force the engine to fail at a certain point in the pattern—consider contradictory pairs such as (?=A)B. But (?!) is the most popular, probably because it is so compact. Some of these ways are explored in the trick about forcing a failure.
+
+--------------------------------------------------------------------------------------------------------
+Use Cases for (*FAIL)
+There are a number of use cases for (*FAIL) and its equivalents.
+
+✽ You can use (*F) within conditionals to enforce certain balancing conditions. For instance, (INTRO)?(?:MAIN1|MAIN2(?(1)|(?!))) is a long-winded way of ensuring that MAIN2 is only matched if INTRO has been matched before. This approach is used elegantly in .NET balancing groups. It is also developed in the section on Conditionals At Work: Controlling Failure
+
+✽ In my trick to write pre-defined subroutines for engines that don't support it, I use (*FAIL)—or its alias (?!)— to force the engine to backtrack after defining a capture group without intending to consume characters at that position in the string.
+--------------------------------------------------------------------------------------------------------
+Pre-Defined Subroutines for Engines that Don't Support It
+Perl, PCRE (C, PHP, R…) and Python's alternate regex engine support the terrific (?(DEFINE) … ) syntax that allows you to pre-define named regex subroutines and to use them to build beautiful modular patterns such as the the regex to match numbers in plain English.
+
+At present, the only other engine I know that supports subroutines, Ruby 1.9+, does not support the (?(DEFINE) … ) syntax. I came up with this trick in order to use pre-defined subroutines in these two engines.
+
+As with (?(DEFINE) … ), the idea is to place the definitions in a section at the beginning of the regex—although you can put them anywhere before the subroutine is called. Each definition looks like this:
+
+(?:(?<foo> … )(?!))?
+
+Here the name of the subroutine is foo, and the actual subroutine goes in the place of the ellipsis …. For instance, (?:(?<uc_word>\b[A-Z]+\b)(?!))? defines a subroutine for a word in all-caps.
+
+Once the subroutine is defined, you call it with \g<foo> (Ruby). This makes it very convenient to call patterns repeatedly (especially if they are long), to maintain them in one place, and so on.
+--------------------------------------------------------------------------------------------------------
+✽ In a moment, we'll look at the (*SKIP)(*FAIL) construct, which is a delightful way of excluding certain patterns from the match.
+
+✽ In Perl, which has extensive callback facilities, (*FAIL) can be used to explore all the branches of a match tree. Consider this example:
+'abc' =~ /\w+(?{print "$&\n";})(*F)/
+
+This prints abc, ab, a, bc, b, c. After the \w+ matches the whole string, the code capsule prints the match, then (*F) forces the engine to backtrack. The engine gives up the c, the callback prints ab, the (*F) forces the engine to backtrack, and so on.
+
+--------------------------------------------------------------------------------------------------------
+(*FAIL) is not the opposite of (*ACCEPT)
+It's natural to imagine that (*FAIL) would be the opposite of (*ACCEPT), but that is not the case. If it were the opposite of (*ACCEPT), then (*FAIL) would mean at this point in the match, fail the match attempt. The engine would then throw away whatever had been matched thus far, and perhaps begin a new match attempt at the next starting position in the string.
+
+
+Forcing the Match Attempt to Fail
+If you truly want the opposite of (*ACCEPT) in order to abort the match attempt, you will need to use something like (*PRUNE)(*FAIL) or (*COMMIT)(*FAIL):
+
+FAIL THE MATCH ATTEMPT
+✽ In the case of (*PRUNE)(*FAIL), once the engine encounters (*FAIL), it tries to backtrack in order to find a successful match. When it tries to backtrack across the (*PRUNE), the match attempt fails. The engine then tries a new match attempt at the next starting position in the string, if any.
+
+FAIL THE ENTIRE MATCH
+✽ In the case of (*COMMIT)(*FAIL), once the engine encounters (*FAIL), it tries to backtrack in order to find a successful match. When it tries to backtrack across the (*COMMIT), the match attempt fails, and the engine also abandons any further match attempts.
+
+Soon we'll study a surprisingly useful variation on these themes: (*SKIP)(*FAIL).
+
+--------------------------------------------------------------------------------------------------------
+(*MARK)
+This verb is used either on its own or in conjunction with (*SKIP). You use it to tag (and in certain cases "bookmark") a position in the string, as in (*MARK:after_the_digits).
+
+Note that (*:some_tag) is an alias for (*MARK:some_tag)
+
+When the verb is used by itself, you typically pepper several instances of it in your code, as in (*MARK:tag1), (*MARK:tag2). You are later able to determine which path the engine has used to return the match by inspecting the $REGMARK variable in Perl or PCRE's pcre_extra data block
+
+When the verb is used in conjunction with (*SKIP), the (*SKIP:some_tag) syntax specifies a "bookmark" in the string, the position where the engine should start its next match attempt if the match attempt explodes when the engine tries to backtrack across (*SKIP:some_tag).
+
+--------------------------------------------------------------------------------------------------------
+Marking with (*PRUNE) and (*THEN)
+You can use (*PRUNE:some_tag) and (*THEN:some_tag) to record the matching path if you'd like to later inspect the $REGMARK variable in Perl or PCRE's pcre_extra data block.
+
+One difference between these and (*MARK:some_tag) is that while (*SKIP:some_tag) looks for (*MARK:some_tag), it does not look for (*PRUNE:some_tag) or (*THEN:some_tag).
+
+--------------------------------------------------------------------------------------------------------
+Using (*SKIP)(*FAIL) to Exclude Unwanted Matches
+You might recall from the Elements of Regex Style that often, saying what you don't want is an important strategy to achieve your regex goals. We typically do that with negative character classes such as \D and [^"], or with negative assertions such as (?!A).
+
+Sometimes, we want a bit more sophistication to express what we don't want. For instance, suppose we'd like to match all individual words in a text (defined by the pattern \b\w+\b) except if such words live between curly braces, {like these}.
+
+For this kind of situation, the (*SKIP)(*FAIL) construct is wonderful. With it, instead of cooking up some convoluted negative logic, you express exactly what you want to avoid; if you find it, you skip it; if you don't find it, you match what you want.
+
+Here is how we could match single words so long as they don't live inside a set of curly braces.
+
+{[^}]*}(*SKIP)(*FAIL)|\b\w+\b
+
+Note that for this pattern, we assume we know that our text can never contain {nested{braces}}.
+
+
+##############################################################################################################
+https://www.boost.org/doc/libs/1_70_0/libs/regex/doc/html/boost_regex/syntax/perl_syntax.html#boost_regex.syntax.perl_syntax.backtracking_control_verbs
+
+(*THEN)   Has no effect unless backtracked onto, in which case all subsequent alternatives in a group of alternations are discarded
+(*PRUNE)  Has no effect unless backtracked onto, in which case all the backtracking information prior to this point is discarded.
+(*SKIP)   Behaves the same as (*PRUNE) except that it is assumed that no match can possibly occur prior to the current point in the
+          string being searched. This can be used to optimize searches by skipping over chunks of text that have already been
+          determined can not form a match.
+(*COMMIT) Has no effect unless backtracked onto, in which case all subsequent matching/searching attempts are abandoned.
+(*FAIL)   Causes the match to fail unconditionally at this point, can be used to force the engine to backtrack.
+(*ACCEPT) Causes the pattern to be considered matched at the current point. Any half-open sub-expressions are closed at the current
+          point.
+
+
+
+##############################################################################################################
+
+https://www.boost.org/doc/libs/1_70_0/libs/regex/doc/html/boost_regex/syntax/perl_syntax.html#boost_regex.syntax.perl_syntax.backtracking_control_verbs
+Backtracking Control Verbs
+
+This library (boost.org/doc/libs/1_70_0)  has partial support for Perl's backtracking control verbs, in particular (*MARK) is not supported. There may also be detail differences in behaviour between this library and Perl, not least because Perl's behaviour is rather under-documented and often somewhat random in how it behaves in practice. The verbs supported are:
+
+(*PRUNE)  Has no effect unless backtracked onto, in which case all the backtracking information prior to this point is discarded.
+(*SKIP)   Behaves the same as (*PRUNE) except that it is assumed that no match can possibly occur prior to the current point in the
+          string being searched. This can be used to optimize searches by skipping over chunks of text that have already been
+          determined can not form a match.
+(*THEN)   Has no effect unless backtracked onto, in which case all subsequent alternatives in a group of alternations are discarded
+(*COMMIT) Has no effect unless backtracked onto, in which case all subsequent matching/searching attempts are abandoned.
+(*FAIL)   Causes the match to fail unconditionally at this point, can be used to force the engine to backtrack.
+(*ACCEPT) Causes the pattern to be considered matched at the current point. Any half-open sub-expressions are closed at the current
+          point.
+
+Operator precedence
+The order of precedence for of operators is as follows:
+
+1) Collation-related bracket symbols [==] [::] [..]
+2) Escaped characters \
+3) Character set (bracket expression) []
+4) Grouping ()
+5) Single-character-ERE duplication * + ? {m,n}
+6) Concatenation
+7) Anchoring ^$
+8) Alternation |
+
+
+
+
+balanced text
+nested brackets, parens ... ---> require -> recursion, or counting, or conditionals  ?
+
+can be done without polluting the capture array buffer ? named or numbered
+
+2 nested ? 1 or more nested plus taking into accound backslash ?
+
+ [^(]*+ ( \( (?: [^()]++ | (?-1) )* \) )? .*?
+
+# perl -le 'print "\"$&\"" if "a(b)c  (d (e)f (g (h)i )j )k()l" =~ /.*?( \(  ( [^()] | (?-1) )*   \)  )?.*/x'
+
+perl -le 'print "\"$&\"" if "a(bc  (d (e)f (g (h)i )j )k())l" =~  /^(\( (?:[^()]++ | (?-1) )* \) | [^()]++ )*/x'
+
+------------------------------------------------------------
+
+E(?=pattern)   (?<=pattern)E difference ??
+
+------------------------------------------------------------
+
+(?:(A)B(C)) {n,m} or {n} or + * ?? 
+
+capturing group, backtracking behavior inside lookaroud, subpatterns, atomic groups ?
+
+
+
+------------------------------------------------------------
+
+(?(DEFINE))  named capture group + named backreference + negative lookahead / (*FAIL)
+
+------------------------------------------------------------
+
+
+(*SKIP)(*FAIL)
+
+
+-------------------------------------
+
+
+backtracking --> stack of the satisfied assertions that are quantified
+
+
+
+perl -le '@matches="Tarzan, Jane and Superman hopped from vine to vine."=~/\b(?!Tarzan|Jane|Superman)(\w+)/g; print "\"$_\"" for @matches'
+perl -le '@matches="Tarzan, Jane and Superman hopped from vine to vine."=~/\b(?:Tarzan|Jane|Superman)(*SKIP)(*FAIL)|(\w+)/g; print "\"$_\"" for @matches'
+
+
+scope
+- static
+- dynamic
+
+operator
+- precedence           classical programming language parsing (yacc..)
+- associativity        classical programming language parsing (yacc..)
+- DISTRIBUTIVITY --> generalized expression manipulation ????
+                 --> simplification of some algorithm ???
+                     because more mathematical, less algorithmic information to encode, more symmetry ?
+                 --> simpler parsing algorithm and design of grammars ???
+
+raku junction
+--> sort of a factoring, inversion of precedence for existing operators (or and any none all) and operand types (sets, lists, scalars)
+
+any { $_ > 0 } @array ===> any(@array) > 0
+
+maybe sort of distributivity ? but in an artificial way, instead of having a distributivity property for operators,
+raku introduced a new type (Junction (or and any all none)) and/or new operators (& | ^ none() .none all() .all any() .any)
+
+
+(mathematical) expressions
+--> evaluated   ===> only thing that most computer languages do with expressions
+--> but not ONLY evaluated !!! 
+"rearranged", isolate a variable for example, substitution, factoring, simplification, derivative, integration, etc...
+
+the only thing that would come close to doing that is the compiler, and mostly when doing optimizations
+
+no expression manipulation for semantic reasons
+
+
+
+
+
+CS grammar
+- precendece
+- associativity
+
+Maths, algebra
+- associativity
+- distributivity
+- commutativity
+- transitivity
+- etc..
+
+how does the information about precedence of operators is encoded in algebra ?
+
+
+
+################################################################################################
+
+(*THEN)
+avoid unnecessary backtracking
+/A(*THEN)B/                 /(?>A)B/              (behaves like (*PRUNE))
+/A(*THEN)B|C/               /(?>A)B|C/
+/A(*THEN)B|C(*THEN)D|EF/    /(?>A)B|(?>C)D|EF/
+------------------------------------------------------------------------------------------------
+(*PRUNE)
+avoid unnecessary backtracking
+/A(*PRUNE)B/    /(?>A)B/   (behaves the same as atomic group)
+/A(*PRUNE)B|C/             (behaves the differently as atomic group)
+
+------------------------------------------------------------------------------------------------
+(*SKIP)
+avoid unnecessary backtracking, and also avoid unnecessary match attempt (all until a certain point)
+skip fail
+mark skip
+
+------------------------------------------------------------------------------------------------
+(*COMMIT)
+avoid unnecessary match attempt (all after a certain point)
+------------------------------------------------------------------------------------------------
+(*ACCEPT)
+factorisation
+
+/BAZ|BIZ|BO/ ===(factoring B)===> /B(?:AZ|IZ|O)/ ===(factoring Z)===> /B(?:A|I|O(*ACCEPT))Z/
+
+other options (using conditionals)
+
+===(factoring Z)===> /B(?:(A|I)|O)(?(1)Z)/
+===(factoring Z)===> /B(?:A|I|(O))(?(1)|Z)/
+
+
+------------------------------------------------------------------------------------------------
+(*MARK)
+control what we skip, where we start the next match attempt
+------------------------------------------------------------------------------------------------
+(*FAIL)
+fail         --> fail a "sub match attempt", cause to backtrack inside a match attempt, if there is something to backtrack
+                 or other alternation branch to consider
+prune fail   --> fail a match attempt at a certain subject string position
+skip fail    --> fail a match attempt, and start another match attempt in the subject string and skip what has been match
+                 just before (*SKIP)
+commit fail  --> fail the entire match (no match attempt after that)
+
+define subroutine for regex engines that don't support (?(DEFINE)) -> require named capture group and named backreferences
+
+(?(DEFINE) (?<foo>) )   -->    (?:(?<foo> … )(?!))?  (doesn't work in perl) (and that's normal, this is not equivalent to DEFINE)
+
+exploring paths that match, in Perl with (?{code}) --> /PATTERN(?{print "\"$&\""})(*FAIL)/
+/ set of strings matched/defined by the regex
+
+################################################################################################
+
+
+
+REJECT CERTAIN PATTERNS
+[^] negative character class
+negative lookaround
+(*SKIP)(*FAIL) plus alternation
+
+WORD BOUNDARY
+\b
+start of string ? ^
+end of string ? $
+just before or after a new line ?
+
+
+
+
+positive lookaround --> can be used to be able to apply multiple pattern to the same substring
+
+can be used to replicate the semantics of the raku regex conjunction operator & / &&
+
+
+regexes --> describe sets of strings
+
+|| alternation      --> set union
+& / &&  conjuction  --> set intersection
+!~~ or !//          --> negation / set complement
+
+
+
+As with (?(DEFINE) … ), the idea is to place the definitions in a section at the beginning of the regex—although you can put them anywhere before the subroutine is called. Each definition looks like this:
+(?:(?<foo> … )(?!))?      (doesn't work)
+
+
+perl -le 'print "true" if "abc123" =~ /abc123/'
+perl -le 'print "true" if "abc123" =~ /abc(?=\d+)/'
+perl -le 'print "true" if "abc123" =~ /(?=abc\d+)abc/'
+perl -le 'print "true" if "abc123" =~ /(?<=abc)123/'
+perl -le 'print "true" if "abc123" =~ /123(?<=abc123)/'
+
+
+
+

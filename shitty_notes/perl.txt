@@ -1,0 +1,144 @@
+
+
+
+perl -le 'open( FH => ">-" ); close STDOUT; print FH "test"'
+perl -le 'open(FH => ">&STDOUT");close STDOUT; print FH "test"'
+perl -le 'open $fh, ">&STDOUT";close STDOUT; print $fh "test"'
+perl -le 'open $fh, ">&", STDOUT;close STDOUT; print $fh "test"'
+perl -le 'open $fh, ">&", *STDOUT;close STDOUT; print $fh "test"'
+perl -le 'open $fh, ">&", *STDOUT{IO}; close STDOUT; print $fh "test"'
+perl -le 'open $fh, ">&", \*STDOUT{IO}; close STDOUT; print $fh "test"'
+
+perl -le 'open $out, ">&", STDOUT; print "open"; close STDOUT; print "close"; print $out "duplicated filehandle"; print STDOUT "not yet re-opened"; open STDOUT, ">&", $out; print "re-opened"'
+
+
+> /dev/null
+perl -le 'open STDOUT, ">", "/dev/null"; print "text"'
+
+2> /dev/null
+perl -le 'open STDERR, ">", "/dev/null"; print STDERR "text"'
+
+&> /dev/null
+perl -le 'open STDOUT, ">", "/dev/null"; open STDERR, ">", "/dev/null"; print "text"; print STDERR "text"'
+
+
+perl -le 'close STDOUT; close STDERR; print "text"; print STDERR "text"'
+
+print
+print STDOUT
+print STDERR
+print FILEHANDLE
+print <FILEHANDE>
+print $FILEHANDLE
+print <$FILEHANDE>
+
+
+
+|
+
+> /path/to/file
+
+2>&1
+
+
+cat wd | perl -e '$fh=\*STDIN; print <$fh>'
+perl -le '$fh=\*STDOUT; print $fh "text"'
+
+
+
+
+CLOSURES
+
+
+CODE REFERENCES
+
+
+
+
+##################
+#   INTERFACES   #
+##################
+
+function wuth prototype (\@@)
+push @array, LIST
+
+this prototype (\@\@\@) allows to pass 3 arrays without having them flatten, or having the first slurp everything,
+or having to pass \@array1, \@array2, \@array3
+
+
+sub function_name(\@\@\@) {}
+sub function_name(\@\@\@) {}
+use feature "signatures"; sub function_name :prototype(\@\@) {}
+sub function_name(\[@@@]) {}; ??
+
+function_name(@array1, @array2, @array3);
+
+FUNCTIONS
+------------------------
+OBJECTS
+blessed hashes
+moose, moo, moxies, three littlw words, etc..
+
+------------------------
+LVALUE FUNCTIONS / METHODS
+------------------------
+
+TIED HASHES ( or other data structures)
+------------------------
+
+CLOSURES, closures as objects
+
+------------------------
+
+PERL 6
+objects with both positional [] and associative {} with their respective postcircumfix operators
+----------------------------
+
+subroutines that take an lvalue
+
+module Contextual::Return
+
+wantarray
+
+################################################################################
+
+
+FUNCTIONAL PROGRAMMING
+
+
+pure functions
+immutable data structures -> persistent data structures
+atoms  -> like variables, to have state. but assigned / modified differently that variables
+bridges,  queues -> side-effects, I/O, events, etc..
+
+
+programs
+(classes inheritance methods) = OOP
+namespaces arrays hashes
+strings numerics booleans indentation comments
+names name=value if iteration procedures
+
+
+
+
+passing and returning functions as arguments
+function composition
+arithmetic add, mutiply or divide of the result of two function
+
+make a function that returns a 2-tupple, each element being the result of one of 2 functions
+and the composed function takes 2 arguments, 2 times the single arguments that each function takes
+
+map, reduce, filter
+
+
+
+perl -le '@array="text"x3; print scalar @array'		# 1     string repetition
+perl -le '@array=("text")x3; print scalar @array'	# 3		list repetition
+perl -le '@array=("a","b")x3; print scalar @array'	# 6     list repetition
+
+
+
+
+
+
+

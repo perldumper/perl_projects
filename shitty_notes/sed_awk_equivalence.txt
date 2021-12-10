@@ -1,0 +1,697 @@
+
+
+
+PRINT THE LINE NEXT LINE AFTER A PATTERN
+sed -n '/line 14/,/./H; ${g; s/^.*\n//; p}' wd
+sed -n '/line 14/{n;p}' wd
+perl6 -ne '.say if /"line 12"/ ^fff /./' wd
+perl6 -ne '.say if /"line 12"/ ^fff /^/' wd
+perl -ne 'print, exit if $next; $next=1 if /line 14/' wd
+perl -ne 'next if 1../line 14/; print; exit' wd
+
+perl -ne 'print if /line 5/ .. /line 12/' wd
+perl -ne 'print if /line 5/ ... /line 12/' wd
+
+perl -le 'for (qw(AB C D B E F)){print if /A/ .. /B/}'
+AB
+
+perl -le 'for (qw(AB C D B E F)){print if /A/ ... /B/}'
+AB
+C
+D
+B
+--------------------------------------------------------------------
+
+SED -i
+
+y///
+perl -pi -e 'y///'
+perl -pi -e 'tr///'
+
+s///g
+perl -ni -e 's///g; print' wd
+perl -pi -e 's///g' wd
+
+//d
+perl -ni -e 'print unless /line 14/' wd
+perl -lni -e 'print unless /insert/' wd 
+
+insert at pattern
+perl -lni -e 'if(/line 13/){print "line 14"} print' wd 
+perl -lni -e 'if(/line 2$/){print "insert"} print' wd 
+
+append at pattern
+perl -lni -e 'print; if(/line 13/){print "line 14"}' wd 
+
+insert at line
+sed '3i\text' wd
+perl -lne 'print; if($.==3-1){print "text"}' wd
+
+append at line
+sed '3a\text' wd
+perl -lne 'print; if($.==3){print "text"}' wd
+
+
+AWK
+gawk -i inplace
+
+
+
+
+
+
+
+
+
+
+
+
+p
+d
+s
+sg
+i
+a
+c
+=
+n
+yNDgGhHxbtTqQrRlPwW
+
+#####################################################
+
+PRINT
+sed '' test_file2
+sed -n 'p' test_file2
+sed -n '1,$p' wd
+sed '1,$!d' wd
+
+
+awk '{print}' test_file2
+awk 'NR{print}' wd
+awk '//' test_file2
+awk '1' sed_awk_equivalence
+
+perl -pe ''
+perl -ne 'print'
+
+-------------------------------------------------------------
+
+do not print (ACTION ommited = automatic print but empty block {} do not print)
+awk '/./{}' wd
+
+-------------------------------------------------------------
+
+PRINT SPECIFIC LINE
+sed -n '3p' wd
+sed '3!d' wd
+
+awk 'NR==3' wd
+
+perl -ne 'print if $.==3' wd
+-------------------------------------------------------------
+PRINT LAST LINE
+sed -n '$p' wd
+sed '$!d' wd
+
+awk 'END {print}' wd
+
+perl -ne '$line=$_; END{print $line}' wd
+
+-------------------------------------------------------------
+PRINT ALL LINES EXCEPT THE LAST THREE
+awk '{if (a) {print a}; a=b; b=c; c=$0}' wd
+
+perl -e '@file=<>; print @file[0..$#file-3]' wd 
+
+
+
+-------------------------------------------------------------
+PRINT SPECIFIC RANGE OF LINE
+sed -n '3,5p' wd
+sed '3,5!d' wd
+
+awk 'NR>=3 && NR<=5' wd
+
+perl -ne 'print if 3..5' wd
+perl -ne 'print if $. >=3 and $. <= 5' wd
+          ------------------
+sed -n '1,7!p' wd
+sed '1,7d' wd
+
+awk 'NR==1,/line 7/{next}{print}' wd
+
+perl -ne 'print unless 1..7' wd
+perl -ne 'print unless $. >=1 and $. <= 7' wd
+-------------------------------------------------------------
+PRINT SPECIFIC LINE THAT MATCH PATTERN
+sed -n '/line 3/p' wd
+sed '/line 3/!d' wd
+
+awk '/line 3/' wd
+awk '$0 ~ /line 3/' wd
+
+awk '{ if( $0 ~ "line 7") { print $0} }' wd
+awk '{ if( $0 ~ /line 7/) { print $0} }' wd
+
+perl -ne 'print if /line 3/' wd
+perl -ne 'print if $_ =~ /line 3/' wd
+
+-------------------------------------------------------------
+
+PRINT NTH FIELD
+awk '{print $n}' wd
+
+perl -lane 'print $F[n-1]' wd
+
+-------------------------------------------------------------
+PRINT LAST FIELD
+awk '{print $NF}' wd
+
+perl -lane 'print $F[$#F]' wd
+perl -lne 'print ((split)[-1])' wd
+-------------------------------------------------------------
+REMOVE LAST FIELD
+awk '{NF-- ; print}' wd
+
+awk 'NR{NF-=1};1' wd
+awk '{NF-=1};1' wd
+awk '{NF-=1}1' wd
+awk '{NF-=1} {print}' wd
+awk '{NF-=1}{print}' wd
+awk 'NF{NF-=1};1' <in >out
+awk 'NF{NF--};1' <in >out
+awk 'NF{--NF};1' <in >out
+
+perl -lpe 's/\s+\S+$//' wd
+-------------------------------------------------------------
+
+NEGATIVE
+sed -n '/line 3/!p' wd
+sed '/line 3/d' wd
+
+awk ' $0 !~ /line 3/' wd
+awk ' !($0 ~ /line 3/)' wd
+
+perl -ne 'print unless /line 3/' wd
+perl -ne 'print if !/line 3/' wd
+perl -ne 'print if $_ !~ /line 3/' wd
+
+perl -ne 'print if $_ =~ !/line 3/' wd   WHAT THE FUCK
+
+-------------------------------------------------------------
+
+DELETE
+sed '/line 3/d' test_file2
+sed -n '/line 3/!p' test_file2
+sed -n '/line 3/n;p' test_file2
+
+awk '/line 3/{next}{print}' test_file2
+awk '!/line 3/' test_file2
+
+perl -ne 'print unless /line 3/' wd
+
+-------------------------------------------------------------
+
+DELETE BLANK LINES
+grep -v '^$' file.txt
+grep '.' file.txt
+
+sed '/^$/d' file.txt
+sed -n '/^$/!p' file.txt
+sed -n '/./p' sd
+
+awk NF file.txt
+awk '/./' file.txt
+
+perl -ne 'print if /./' wd
+perl -ne 'print unless /^$/' wd
+-------------------------------------------------------------
+DELETE LAST LINE
+sed '$d' wd
+sed -n '$!p' wd
+
+awk 'NR>1{print buf}{buf = $0}' wd
+
+
+-------------------------------------------------------------
+
+
+SUBSTITUTE
+sed 's/line 3/word/' test_file2
+
+awk '{sub(/^line 3/,"word") ; print}' test_file2
+
+perl -pe 's/line 3/word/' wd
+-------------------------------------------------------------
+
+SUBSTITUTE GLOBALLY
+sed 's/line 3/word/g' test_file2
+
+awk '{gsub(/line/,"word") ; print}' test_file2
+
+perl -pe 's/line 3/word/g' wd
+
+-------------------------------------------------------------
+INSERT
+sed '4i\text' wd
+
+awk '!(NR==4){print} NR==4{print "text" "\n" $0}' wd
+awk '!(NR==4){print} NR==4{print "text" ORS $0}' wd
+
+
+perl -lne 'print; if($.==4-1){print "text"}' wd
+perl -lne 'if($.==4){print "text"} print' wd
+
+-------------------------------------------------------------
+APPEND
+sed '4a\text' wd
+
+awk '{print} NR==4{print "text"}' wd
+
+perl -lne 'print; if($.==4){print "text"}' wd
+
+-------------------------------------------------------------
+CHANGE
+sed '4c\text' wd
+
+awk '!(NR==4){print} NR==4{print "text"}' wd
+
+perl -lne 'if($.==4){print "text"; next} print' wd
+
+-------------------------------------------------------------
+LINE NUMBER
+sed '=' wd
+
+awk '{print NR ORS $0 }' wd
+awk '{print NR,$0 }' wd
+
+perl -lne 'print $.; print' wd
+perl -ne 'print "$. $_"' wd
+-------------------------------------------------------------
+
+PRINT EVERY OTHER LINE
+sed -n '0~2p' test_file2
+sed -n '1~2p' test_file2
+
+awk '!(NR%2==0)' test_file2
+awk '(NR%2==0)' test_file2
+awk '!(NR%2==1)' test_file2
+awk '(NR%2==1)' test_file2
+ls /usr/bin | awk 'NR%2==1'
+ls /usr/bin | awk 'NR%2==0'
+
+perl -ne 'print if $. % 2 == 0' wd
+perl -ne 'print if $. % 2 == 1' wd
+
+-------------------------------------------------------------
+SAVE FILE IN AN ARRAY
+SLURP FILE IN ARRAY
+awk '{line[NR] = $0}END{for (i=1 ; i <=NR ;i++) {print line[i]}}' test_file2
+awk '{file[NR] = $0}END{for (i in file) {print file[i]}}' wd
+
+perl -e '@file=<>; print @file' wd
+
+-------------------------------------------------------------
+
+INVOQUE OTHER COMMANDS INSIDE AWK
+qg "^man" | awk 'NF==3 {print | "grep \"^man.* $\""}'
+qg "^man" | awk 'NF==3 {print | "wc -l"}'
+qg "^man" | awk 'NF==3 {print|"sort"}'
+
+qg "^man" | awk '{print|"sort -u|wc -l"}'
+qg "^man" | awk '{print|"sort |uniq|wc -l"}'
+
+
+-------------------------------------------------------------
+REVERSE FILE ORDER
+sed -n '1h;1!{G;h};$p' wd
+sed -n '1h; 1,${G;h}; ${g;p}' wd
+sed -n '1h; $!{G;h}; ${G;p}' wd
+
+awk '{array[NR]= $0} END {i=NR ; for (i=NR;i>=1;i--){print array[i]}}' wd
+
+perl -e '@file=<>; print reverse @file' wd
+perl -e 'print reverse <>' wd
+-------------------------------------------------------------
+CONCAT STRING
+
+
+
+ls /usr/bin | awk '/^y/{chain=chain $1 " "}END{print chain}'
+
+ls /usr/bin | perl -le 'print join " ", grep { /^y/ } map {chomp; $_ } <>'
+
+ls /usr/bin | perl -le 'print join " ", grep { chomp; /^y/ } <>'
+
+
+
+-------------------------------------------------------------
+COUNT OF EACH LINE FOR EACH LETTER
+ls | awk '{count[substr($0,1,1)]++}END { for(i in count) {print i,count[i]} }'
+
+ls | awk '{count[tolower(substr($0,1,1))]++}END { for(i in count) {print i,count[i]} }'
+ls | awk '{count[toupper(substr($0,1,1))]++}END { for(i in count) {print i,count[i]} }' | sort
+
+for i in {a..z} ; do letter="^$i" ;ls /usr/bin | awk -v var="$letter" '$0 ~ var {num+=1}END{print substr(var,2,1), num}' ; done
+
+
+-------------------------------------------------------------
+PRINT ALL LETTER OF THE ALPHABET
+
+
+awk 'BEGIN { for (i=65;i<=90 ;i++){ printf("%c",i) };printf("\n") }'
+awk 'BEGIN{ for(i=65;i<=90;i++) { array[i]=sprintf("%c",i) }; for(j=65;j<=90;j++) {printf array[j]} ; print }'
+
+awk 'BEGIN{ for(i=97;i<=122;i++) { printf("%c",i) };print}'
+awk 'BEGIN{ for(i=97;i<=122;i++) { array[i]=sprintf("%c",i) }; for(j=97;j<=122;j++) {printf array[j]} ; print }'
+
+awk 'BEGIN{letters="abcdefghijklmnopqrstuvwxyz";for(i=1;i<=26;i++){print substr(letters,i,1)}}'
+awk 'BEGIN{letters="ABCDEFGHIJKLMNOPQRSTUVWXYZ";for(i=1;i<=26;i++){print substr(letters,i,1)}}'
+
+awk 'BEGIN{letters="abcdefghijklmnopqrstuvwxyz";for(i=1;i<=26;i++){letter[i]=substr(letters,i,1)};for(i=1;i<=26;i++){print letter[i]}}'
+awk 'BEGIN{letters="ABCDEFGHIJKLMNOPQRSTUVWXYZ";for(i=1;i<=26;i++){letter[i]=substr(letters,i,1)};for(i=1;i<=26;i++){print letter[i]}}'
+
+-------------------------------------------------------------
+PRINT ALL LINES BEGINING WITH a
+ls | awk 'BEGIN{letter=sprintf("^%c",97)} $0 ~ letter {print}'
+COUNT ALL LINES BEGINING WITH a
+ls | awk 'BEGIN{letter=sprintf("^%c",97)} $0 ~ letter {num+=1}END {print num}'
+
+-------------------------------------------------------------
+
+COUNT WORDS
+
+awk '{for(i=1;i<=NF;i++){ w[$i]+=1 }} END {for (i in w) {print w[i],i}}' ed | sort -n
+
+awk '{for(i=1;i<=NF;i++){ w[tolower($i)]+=1 }} END {for (i in w) {print w[i],i}}' ed | sort -n
+
+
+-------------------------------------------------------------
+
+APPEND FILE TO ANOTHER FILE / insert file after line n
+sed '$r xargs' wd
+
+
+-------------------------------------------------------------
+
+PRINT FIELDS IN REVERSE ORDER
+awk '{for(i=NF;i>=1;i--){printf("%s",$i) ; if ( i!=1 ) { printf(" ") } };printf("\n")}' wd
+
+
+-------------------------------------
+
+
+sed '$r wd' wd
+
+sed 'R xargs' wd
+
+
+-------------------------------------------------------------
+WC
+ls | sed -n '$='
+
+ls | awk '{num+=1} END {print num}'
+
+ls | awk '{n++} END {print n}'
+
+
+
+
+
+
+
+ls | awk '{print substr($0,1,1)}'
+
+
+
+awk '{split($0,letters,"");for(i=1;i<=length($0);i++){print letters[i]}}' wd
+awk '{split($0,letters,"");print letters[length($0)]}' wd
+awk '{split($0,letters,"");for(i=1;i<=length($0);i++){print letters[i];if(i==length($0)){printf("\n")}}}' wd
+
+awk '{split($0,letters,"");for(i=1;i<=length($0);i++){print letters[i];if(i==length($0)){printf("\n")}}}' wd | sed '$d'
+
+
+WRONG
+awk '{split($0,letters,"");for(i=1;i<=length($0);i++){print letters[i];if(i==length($0 && NR!=NR)){printf("\n")}}}' wd
+
+
+####################################################################################
+PRINT ALL LINES EXCEPT LAST THREE
+tac wd | awk 'NR==1{next}NR==2{next}NR==3{next}1' | tac
+tac wd | awk 'NR==1{next}NR==2{next}NR==3{next}{print}' | tac
+
+
+awk '{array[NR]=$0} END {for(i=1;i<=NR-3;i++){print array[i] }}' wd
+
+####################################################################
+SED
+
+
+sed -n '1N;2N;/line 20[^\n]*$/P;N;D' wd
+
+-------------------------------------------------------------
+PRINT FIRST 3 LINES
+sed -n '1{N;N;p}' wd
+
+awk 'NR>=1 && NR<=3' wd
+
+-------------------------------------------------------------
+PRINT LAST 3 LINES
+sed -n '1N;2N;3,19{N;D};$p' wd
+
+awk '{array[NR]=$0} END {for(i=NR-2;i<=NR;i++){print array[i] }}' wd
+
+awk '{if (a) {print a}; a=b; b=c; c=$0}' wd
+
+-------------------------------------------------------------
+PRINT FIRST 3 LINES IN REVERSED ORDER
+sed -n '1{h;n;G;h;n;G;p}' wd
+
+awk 'NR>=1 && NR<=3 {array[NR]=$0}END {for(i=3;i>=1;i--){print array[i]}}' wd
+
+
+################################################333
+GREP
+PRINT MATCH AND 3 LINES BEFORE 
+grep -B 3 "line 15" wd
+
+
+
+awk '{ if( $0 ~ /line 7/) { print a "\n" b "\n" c "\n" $0} a=b ; b=c ; c=$0 }' wd
+
+-------------------------------------------------------------
+PRINT MATCH AND 3 LINES AFTER 
+grep -A 3 "line 15" wd
+
+sed -n '/line 7/,+3p' wd
+sed -n '/line 7/{N;N;N;p}' wd
+
+awk '{if( $0 ~ /line 7/) {line=NR+3} if( NR == line) { print a "\n" b "\n" c "\n" $0} a=b ; b=c ; c=$0}' wd
+
+-------------------------------------------------------------
+PRINT MATCH AND 3 LINES BEFORE AND AFTER
+grep -C 3 "line 15" wd
+
+
+awk '{if( $0 ~ /line 7/) {line=NR+3} if( NR == line) { print a "\n" b "\n" c "\n" d "\n" e "\n" f "\n" $0} a=b ; b=c ; c=d; d=e ; e=f ; f=$0}' wd
+
+
+
+
+-------------------------------------------------------------
+
+DELETE LINE THAT MATCH AND THE 2 LINES AFTER
+sed '/line 7/,+2d' wd
+
+sed '/line 7/{N;N;s/line 7.*\n.*\n.*//}' wd (this one replace deleted lines by an empty line)
+
+
+
+
+-------------------------------------------------------------
+PRINT THE FIRST LINE AFTER A MATCH WITHOUT THE MATCH
+sed -n '/line 7/{N;s/.*\n//;p}' wd
+
+-------------------------------------------------------------
+
+PRINT THE SECOND LINE AFTER A MATCH WITHOUT THE MATCH
+sed -n '/line 7/{N;N;s/.*\n//;p}' wd
+
+-------------------------------------------------------------
+
+PRINT THE THIRD LINE AFTER A MATCH WITHOUT THE MATCH
+sed -n '/line 7/{N;N;N;s/.*\n//;p}' wd
+
+-------------------------------------------------------------
+
+PRINT UP UNTIL THE MATCH
+sed -n '1,/line 7/p' wd
+
+sed -n '1h;2H;3,${/line 7/!H}; /line 7/{H;x;p}' wd
+
+
+
+-------------------------------------------------------------
+PRINT LINE BEFORE MATCH
+sed -n '1h;2H;3,${/line 9/!{H;x;s/.*\n//;h}}; /line 8/{H;x;P}' wd
+
+-------------------------------------------------------------
+PRINT MATCH AND LINE BEFORE
+sed -n '1h;2H;3,${/line 9/!{H;x;s/.*\n//;h}}; /line 9/{H;x;p}' wd
+sed -n '1h;2,${/line 9/!{H;x;s/[^\n]*\n//;h}};/line 9/{H;x;p}' wd
+
+
+
+-------------------------------------------------------------
+PRINT 2 CONSECUTIVE LINES WITH IF THE FIRST CONTAIN PATTERN 1 AND THE SECOND PATTER 2
+sed -n '/line 5/{N;/\nline 6/p}' wd
+
+
+
+
+sed -n '1,4H;5,${/line 9/!{H;x;s/[^\n]*\n//;h}};/line 9/{H;x;p}' wd
+
+-------------------------------------------------------------
+PRINT MATCH AND
+1 LINE BEFORE (works only at line 3 and after)
+sed -n '1h;2,${/line 3/!{H;x;s/[^\n]*\n//;h}};/line 3/{H;x;p}' wd
+sed -n '1H;2,${/line 5/!{H;x;s/[^\n]*\n//;h}};/line 5/{H;x;s/[^\n]*\n//;p}' wd
+
+
+-------------------------------------------------------------
+2 LINES BEFORE
+sed -n '1,2H;3,${/line 5/!{H;x;s/[^\n]*\n//;h}};/line 5/{H;x;s/[^\n]*\n//;p}' wd
+
+-------------------------------------------------------------
+3 LINES BEFORE
+sed -n '1,3H;4,${/line 5/!{H;x;s/[^\n]*\n//;h}};/line 5/{H;x;s/[^\n]*\n//;p}' wd
+
+-------------------------------------------------------------
+4 LINES BEFORE
+sed -n '1,4H;5,${/line 8/!{H;x;s/[^\n]*\n//;h}};/line 8/{H;x;s/[^\n]*\n//;p}' wd
+
+sed -n '1h;2,4H;5,${/line 9/!{H;x;s/[^\n]*\n//;h}};/line 9/{H;x;p}' wd
+
+
+------------------------------------------------------------------------
+
+sed -nl 7 'l' wd
+
+locate "cflow" | sed -n '\=/home/london/Downloads=p'
+----------------------------------------------------------------
+sed -n '/line 7/!{H;x;h;d};/line 7/{H;x;s/\n//;p}' wd
+
+
+-------------------------------------------------------------
+PRINT MATCH AND LINE BEFORE DOESN'T WORK WELL
+sed -n '/line 7/!{H;x;s/.*\n/\n/;h;d};/line 7/{H;x;s/\n//;p}' wd
+
+sed -n '/line 20/!{H;x;s/.*\n/\n/;h;d};/line 20/{H;x;s/\n//;p}' wd
+
+
+-------------------------------------------------------------
+
+
+
+PRINT AN EMPTY COLUMN BEFORE
+awk 'NR{print " "$0}' wd
+
+
+
+
+###############
+#   GETLINE   # (similar to realine)
+###############
+
+DISCARD FIRST LINE
+awk 'BEGIN{getline} {print}' wd
+
+perl -ne 'BEGIN{readline} {print}' wd
+perl -ne 'BEGIN{readline} print' wd
+
+
+
+
+STORE FIRST LINE AND PRINT IT AT THE END
+awk 'BEGIN{getline line} {print}END{print line}' wd
+perl -ne 'BEGIN{$line=readline()} print; END{print $line}' wd
+perl -ne 'BEGIN{$line=readline} {print} END{print $line}' wd
+
+
+
+
+
+
+###################
+#   SED REGEXES   #
+###################
+
+QUANTIFIERS
+echo hello | sed 's/^hel\?//'
+echo hello | sed 's/^hel\+//'
+echo hello | sed 's/^hel*//'
+sed 's/^\w\{4\}//' wd
+
+echo hello | sed -E 's/^hel?//'
+echo hello | sed -E 's/^hel+//'
+echo hello | sed -E 's/^hel*//'
+sed -E 's/^\w{4}//' wd
+
+CHARACTER CLASSES
+
+sed -E 's/^line\s//' wd
+sed 's/^line\s//' wd
+sed 's/^line /line\t/' wd | sed 's/line\t/line /'
+------------------------------------------------------------
+echo hello | sed 's/^he\w//'
+sed 's/^line \w//' wd
+sed 's/^line \d//' wd			# doesn't work
+sed 's/^line [0-9]//' wd
+------------------------------------------------------------
+sed 's/^line [[:digit:]]//' wd
+sed 's/^line [[:alnum:]]//' wd
+sed 's/^[[:alpha:]]//' wd
+sed 's/^[[:lower:]]//' wd
+sed 's/^[^[:upper:]]//' wd
+
+
+CAPTURING GROUPS
+sed -E 's/^(line) ([[:digit:]]+)/\2 \1/' wd
+sed 's/^\(line\) \([[:digit:]]\+\)/\2 \1/' wd
+
+ALTERNATION
+sed -E 's/^(l|i)//g' wd
+sed 's/^\(l\|i\)//g' wd
+
+
+man isalnum.3
+int isalnum(int c);
+int isalpha(int c);
+int iscntrl(int c);
+int isdigit(int c);
+int isgraph(int c);
+int islower(int c);
+int isprint(int c);
+int ispunct(int c);
+int isspace(int c);
+int isupper(int c);
+int isxdigit(int c);
+int isascii(int c);
+int isblank(int c);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

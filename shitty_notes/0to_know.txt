@@ -1,0 +1,179 @@
+
+VARIABLES
+- keywords for declaring a variable ?
+- elementary values / scalars
+    - numbers
+    - strings, multiline strings ?
+    - booleans
+- compound values + how to access/dereference them
+    - arrays/lists
+    - hash
+    - sets ? immutability ?
+- nesting of compound values + how to access/dereference them
+    - array of arrays
+    - array of hashes
+    - hash of hashes
+    - hash of arrays
+- references ?
+- ranges
+- slices
+- empty value (undef, nil, etc), checking for definedness
+- truthy/falsy values (empty lists, 0, "", "0", empty hash, etc)
+- destructuring
+
+
+
+OPERATORS + operator precedence and associativity (left, right, non assoc, chaining)
+- boolean
+- numeric
+- string (concatenation, string multiplication
+- bitwise
+- numeric comparison
+- string comparison
+- operators on lists ? (list multiplication)
+
+
+BASIC I/O
+print, printf
+get
+
+TYPE CONVERSION
+number to/from string, etc
+
+OPERATIONS ON NUMBERS
+trigonometric functions
+exponential functions
+
+
+NUMBER BASE CONVERSION
+to/from decimal, hexadecimal, octal, binary
+
+RANDOM NUMBERS
+
+OPERATIONS ON STRINGS
+length
+index
+substring
+reverse
+transliterate
+replace ?
+chop chomp
+
+STRING FORMATING
+printf, sprintf
+
+CASE
+upper case lower case titlecase etc
+chr / ord
+
+
+OPERATIONS ON ARRAYS/LISTS
+value at index
+slices
+making a list from multiples scalars / lists / elements
+clear a list, make it empty
+number of elements
+indexes
+list repetition
+flattening
+filter
+map
+uniq
+sort
+join
+reverse
+push/pop
+shift/unshift
+splice (analog to susbtr on lists)
+iterate on an array/list
+
+OPERATIONS ON HASHES
+slices
+delete
+keys
+values
+exists
+iteration
+
+OPERATIONS ON BYTES
+bitwise operators
+pack, unpack
+
+
+REGEX
+match
+split
+extract (generally done with the match function)
+substitute and replace, global
+
+STRINGS
+concatenation
+variable interpolation
+unicode character
+
+UNICODE
+
+CONTROL FLOW
+conditionals
+loops
+statement modifier form ?
+keyword for control flow
+    - functions --> return
+    - loop --> continue/next, break/last, redo
+    - goto
+    - exit
+    - die / throw
+
+ERROR HANDLING
+try/catch finally
+throw
+
+FILES
+open, close, read, write, append, seek, tell
+
+SYSTEM
+execute shell/bash commands
+execute external binaries / scripts
+file exists, is a file, is a directory, non zero size zero size, etc
+operations on files and directories
+    - cd, ls, touch, mkdir, rm, rmdir, find, stat
+
+NAMESPACE / MODULES
+
+SCOPE
+static, lexical
+dynamic
+global
+expression, block, function, file, module, namespace, etc..
+keywords for declaring a variable ???
+
+OOP
+
+FUNCTION
+passing arguments
+passing a list, nested list, hash, reference, etcc
+returning a list, hash, reference, etc
+pass by value / pass by reference
+
+FUNCTIONAL PROGRAMMING
+closures
+storing a function in a variable
+passing a function
+returning a function
+
+COMMENTS
+
+HERE DOCUMENTS
+
+EVAL
+
+asychrony parallelism concurrency
+
+Data::Dumper
+knowing the type of a variable / class of an object
+
+
+
+
+
+

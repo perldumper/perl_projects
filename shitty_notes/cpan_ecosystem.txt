@@ -1,0 +1,299 @@
+
+MODULES / NAMESPACES of modules
+
+PRAGMA
+strict
+warnings
+feature
+base        inheritance
+parent      inheritance
+overload
+overloading
+constant
+locale
+re
+sigtrap
+sort
+utf8
+vars
+subs
+fields ??
+diagnostics
+
+lib         @INC
+Exporter    import
+UNIVERSAL   isa, can, DOES
+Carp        exception handling
+version
+
+
+SYSTEM / IPC
+File::Copy, etc
+File::Temp
+File::Basename
+File::Path
+File::Find
+Cwd
+IPC::Open2, IPC::Open2
+Capture::Tiny
+IO
+IO::File
+IO::Socket
+IO::Handle
+IO::Pipe
+IO::Pipeline
+File
+Filter
+Path
+PerlIO
+POSIX
+
+Inline::C
+Inline::Python
+
+ASYNCHRONY / PARALLELISM / CONCURRENCY
+Promise
+Promise::AsyncAwait
+Future
+Coro
+AnyEvent
+
+WINDOWS
+Win32
+
+DEBUGGING
+Var::Mystic
+
+LOGGING
+Log
+Metrics
+Digest
+TAP
+TAP::Harness
+
+
+TESTING
+Test::More
+Test::Simple
+Test2
+Mock
+
+
+DEVELOPPEMENT / PACKAGING
+Config
+ExtUtils
+ExtUtils::MakeMaker     Makefile.PL
+ExtUtils::Command       cp / mv / ..
+ExtUtils::Embed         compile flags
+CPAN
+Alien
+
+
+PROFILING
+Devel::NTYProf
+
+INTERNALS
+B
+B::Concise
+B::Terse
+B::Deparse
+
+Devel
+Devel::Peek
+Devel::PPPort
+
+PadWalker
+
+INTERFACE WITH C LIBRARIES
+XS (not a module)
+XSLoader
+DynaLoader
+
+Encode
+utf8
+
+UNICODE
+Unicode::UCD
+Unicode::Collate
+Unicode::Normalize
+
+
+WEB DEV FRAMEWORKS
+
+Mojo
+Mojolicious
+CGI / PSGI ?
+Dancer
+Catalyst
+
+TEMPLATE PROCESSING
+Template::Mustache
+
+WEB RELATED
+
+LWP
+LWP::UserAgent
+
+HTTP::Request
+HTTP::Response
+HTTP::Headers
+
+Net
+
+Mail
+
+HTML
+HTML::Parse
+
+XML::DOM
+XML::LibXML
+XML::XPath
+
+Time
+Date
+
+Digest
+
+URI
+URI::Escape
+
+WWW::Mechanize
+WWW::RobotRules
+Chrome::DevToolsProtocol
+
+SERIALIZATION
+Data::Dumper
+Storable
+JSON
+YAML
+
+PRETTY PRINTING
+Data::Dumper
+Data::Printer
+DDP
+Data::Dx
+XXX
+
+
+AUGMENTING PERL
+List::Util
+List::MoreUtils
+Scalar::Util        weaken  refaddr
+Tie
+Hash
+Sub
+Ref
+Memoize
+Symbol
+
+OBJECT ORIENTED SYSTEMS
+Moose
+Moo
+
+
+DATA STRUCTURES / ALGORITHMS
+Algorithm
+Tree
+Graph
+Heap
+
+
+DATABASES
+DBD
+DBI
+GDBM_File
+SQL
+
+PARSING
+Text
+Data
+Markdent    markdown
+
+PARSING PERL
+PPI
+
+REGEX
+Regexp::Debugger
+Regexp::Grammars
+Parse::Yapp
+YAPE
+re
+re::engine::RE2
+
+PARSING BINARY FILES
+Convert::Binary::C
+Parse::Binary
+Data::ParseBinary
+
+
+
+NUMERICAL COMPUTATION
+PDL
+
+
+BIOINFORMATICS
+
+
+VISUALIZATION
+GD
+Graphviz
+
+GUI
+Tk
+Prima
+SDL
+
+TERMINAL
+Getopt
+Getopt::Long
+Term::ANSIColor
+Term::RawInput
+Term::ReadKey
+Term::ReadLine
+Term::ReadLine::Gnu
+Term::Table
+Term::Menu
+Term::Menus
+
+String
+String::Format
+
+DOCUMENTATION
+Pod
+
+
+MATHS
+bigint
+bigrat
+Math::BigInt
+Math::BigRat
+Math::BigFloat
+Math::Combinatorics
+Math::Cartesian::Product
+Set::CrossProduct
+
+
+ARCHIVE FILES
+Archive
+Compress
+
+IMAGE METADATA
+Image::EXIF
+Image::ExifTool
+
+IMAGES
+ImageMagick
+Image::Magick
+Imager
+
+AUDIO FILES
+MP3::Info
+MP3::Tag
+Audio::MPD
+Audio::TagLib
+
+
+App::whichpm
+App::cpanminus
+
+

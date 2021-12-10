@@ -1,0 +1,197 @@
+
+################
+###   PERL   ###
+################
+
+
+
+-CO -CI -CS -CA
+
+use Encode
+perl -CO -MEncode -le 'print map { decode("UTF-8", $_) } @ARGV' ℏ🧬
+    
+open, binmode  --> :encoding(UTF-8)
+
+use utf8
+
+
+
+\N{}
+"\N{LATIN SMALL LETTER E}"
+"\N{LATIN SMALL LETTER E WITH ACUTE}"
+
+
+"\N{U+2140}"
+
+MODULES
+Unicode::UCD     --> charinfo
+Unicode::Collate -->
+charnames        --> charnames::viacode
+
+
+lc uc fc
+chr ord hex
+
+perl -CS -le 'print "\\u00e9" =~ s/\\u([0-9a-fA-F]{4})/chr hex $1/erg'
+
+perl -CO -le '$code="U+E9"; print chr hex substr($code, 2)'
+perl -CO -le '$code="U+E9"; print $code =~ s/U\+(.*)/chr hex $1/re'
+
+
+
+UTF-8 UTF-16  UTF-32
+
+split
+
+\N{ZWJ}
+\N{ZERO WIDTH JOINER}
+
+
+#######################
+###     UNICODE     ###
+#######################
+
+Unicode ==> character set
+UTF-8   ==> encoding
+
+ASCII   ==> both a character set and an encoding
+
+code point --> identify a character
+
+
+
+table    code point <--> character/symbol
+
+character properties, files, database
+
+algorithms
+
+encoding   byte sequence <--> code point
+
+
+mojibake
+----------------------------
+joe becker, 1991
+
+encodes graphemes rather than glyphs
+
+initially ascii extended and stretched to 16 bits
+
+Han unification
+
+what is a character ?
+
+emoji --> literally picture-character
+
+--------------------------------------------------------------------------------------------
+
+fixed length encoding
+variable length encoding
+
+byte order (mark)
+
+
+CHARACTER PROPERTIES
+
+character name
+script
+block
+case               upper case, lower case
+
+zero width joiner
+
+combining characters
+combiners
+prepend combiners
+
+combining diacritics
+
+diaeresis --> ü
+ligature  --> œ
+digraphs
+diacritics
+
+clustering
+grapheme cluster
+grapheme cluster boundary
+direction + signal to indicate end of different direction
+
+
+OPERATIONS
+lc up fc
+character / string equality
+equality of characters
+number of characters / graphemes
+sorting / lexical ordering
+
+perl -CO -le 'my $e_acute=join "\N{ZWJ}", "\N{LATIN SMALL LETTER E}", "\N{COMBINING ACUTE ACCENT}"; print $e_acute eq "\N{LATIN SMALL LETTER E WITH ACUTE}"'
+
+perl -MUnicode::Collate -CO -le 'my $e_acute=join "\N{ZWJ}", "\N{LATIN SMALL LETTER E}", "\N{COMBINING ACUTE ACCENT}"; $Collator = Unicode::Collate->new;  print $Collator->eq($e_acute, "\N{LATIN SMALL LETTER E WITH ACUTE}"); print "false" unless $e_acute eq "\N{LATIN SMALL LETTER E WITH ACUTE}"'
+
+-----------------------------------------------------------------------
+
+perl -MUnicode::Collate -Mutf8 -CO -le '$Collator = Unicode::Collate->new; print $Collator->sort(qw(Ä Ç È É Ê Ë Î Ï Ô Ö Ù Û Ü à â ä ç è é ê ë î ï ô ö ù û ü ÿ Ÿ))'
+ 
+àâäÄçÇéÉèÈêÊëËîÎïÏôÔöÖùÙûÛüÜÿŸ
+
+
+
+à       LATIN SMALL LETTER A WITH GRAVE
+À       LATIN CAPITAL LETTER A WITH GRAVE
+â       LATIN SMALL LETTER A WITH CIRCUMFLEX
+Â       LATIN CAPITAL LETTER A WITH CIRCUMFLEX
+
+
+perl -CO -le 'print "\N{LATIN SMALL LETTER AE}"'
+æ
+
+perl -CO -le 'print "\N{LATIN CAPITAL LETTER AE}"'
+Æ
+
+perl -CO -le 'print "\N{LATIN SMALL LIGATURE OE}"'
+œ
+
+perl -CO -le 'print "\N{LATIN CAPITAL LIGATUR
+Œ
+
+ 
+$ perl -MUnicode::Collate -Mutf8 -CO -le '$Collator = Unicode::Collate->new; print $Collator->sort(qw(Ä Ç È É Ê Ë Î Ï Ô Ö Ù Û Ü à â ä ç è é ê ë î ï ô ö ù û ü ÿ Ÿ À Â æ Æ œ Œ))'
+àÀâÂäÄæÆçÇéÉèÈêÊëËîÎïÏôÔöÖœŒùÙûÛüÜÿŸ
+-----------------------------------------------------------------------
+
+perl -Mcharnames=:full -CO -le 'for (grep { /\p{Latin}/ } grep { !/\p{Cntrl}/ } map { chr } 1..200_000 ) { print "$_\t", charnames::viacode(ord) }' | less
+
+collation
+
+
+NORMALIZATION
+NFD
+NFC
+NFKD
+NFKC
+NFG ??
+grapheme cluster
+
+
+
+
+INTERNAL REPRESENTATION
+
+
+
+
+PROGRAMMING LANGUAGES TO LOOK
+
+Raku
+Swift
+Elixir ?
+
+
+
+INTERNAL REPRESENTATION TRADE OFF
+random access ? / iteration ? of
+- bytes
+- code points
+- characters / graphemes
+
+
